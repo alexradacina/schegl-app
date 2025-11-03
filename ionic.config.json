@@ -1,0 +1,7 @@
+{
+  "name": "Schlegl App",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue"
+}

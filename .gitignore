@@ -1,0 +1,86 @@
+# =========================================================
+# Ionic / Capacitor / Cordova
+# =========================================================
+www/
+platforms/
+plugins/
+build/
+dist/
+coverage/
+.sourcemaps/
+
+# Capacitor generated native projects
+android/
+ios/
+
+# =========================================================
+# Node / npm / yarn
+# =========================================================
+node_modules/
+node_modules/*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
+bun.lockb
+
+# =========================================================
+# Environment & local config
+# =========================================================
+.env
+.env.local
+.env.*.local
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# =========================================================
+# OS-specific
+# =========================================================
+# macOS
+*.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================================================
+# Editor files
+# =========================================================
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.log
+
+# =========================================================
+# Optional: if using Android Studio or Xcode separately
+# =========================================================
+*.iml
+.gradle/
+local.properties
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+DerivedData/
+
+# =========================================================
+# Optional: Ionic-specific
+# =========================================================
+.sass-cache/
+.tmp/
+temp/
+/node_modules/

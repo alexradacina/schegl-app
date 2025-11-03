@@ -1,0 +1,140 @@
+import { defineStore } from "pinia";
+import { ref } from "vue";
+import { machineOrdersAPI } from "@/services/api";
+export const useMachineOrdersStore = defineStore("machineOrders", () => {
+    const machineOrders = ref([]);
+    const currentMachineOrder = ref(null);
+    const isLoading = ref(false);
+    const error = ref(null);
+    const fetchMachineOrders = async () => {
+        isLoading.value = true;
+        error.value = null;
+        try {
+            const response = await machineOrdersAPI.getAll();
+            if (response.data.success) {
+                machineOrders.value = response.data.data.machine_orders || [];
+            }
+            else {
+                error.value = response.data.message || "Failed to fetch machine orders";
+            }
+        }
+        catch (err) {
+            error.value = err.response?.data?.message || "Failed to fetch machine orders";
+        }
+        finally {
+            isLoading.value = false;
+        }
+    };
+    const fetchMachineOrderById = async (id) => {
+        isLoading.value = true;
+        error.value = null;
+        try {
+            const response = await machineOrdersAPI.getById(id);
+            if (response.data.success) {
+                currentMachineOrder.value = response.data.data.machine_order;
+                return response.data.data.machine_order;
+            }
+            else {
+                error.value = response.data.message || "Failed to fetch machine order";
+                return null;
+            }
+        }
+        catch (err) {
+            error.value = err.response?.data?.message || "Failed to fetch machine order";
+            return null;
+        }
+        finally {
+            isLoading.value = false;
+        }
+    };
+    const createMachineOrder = async (data) => {
+        try {
+            const response = await machineOrdersAPI.create(data);
+            if (response.data.success) {
+                // Add to list if successful
+                if (response.data.data?.machine_order) {
+                    machineOrders.value.push(response.data.data.machine_order);
+                }
+                return { success: true, data: response.data.data };
+            }
+            else {
+                return {
+                    success: false,
+                    message: response.data.message || "Failed to create machine order",
+                    data: response.data.data,
+                };
+            }
+        }
+        catch (err) {
+            return {
+                success: false,
+                message: err.response?.data?.message || "Failed to create machine order",
+                data: err.response?.data?.data,
+            };
+        }
+    };
+    const updateMachineOrderStatus = async (id, data) => {
+        try {
+            const response = await machineOrdersAPI.updateStatus(id, data);
+            if (response.data.success) {
+                // Update in list
+                const index = machineOrders.value.findIndex((order) => order.id === id);
+                if (index !== -1) {
+                    machineOrders.value[index] = { ...machineOrders.value[index], ...response.data.data.machine_order };
+                }
+                // Update current if it's the same
+                if (currentMachineOrder.value?.id === id) {
+                    currentMachineOrder.value = { ...currentMachineOrder.value, ...response.data.data.machine_order };
+                }
+                return { success: true, data: response.data.data };
+            }
+            else {
+                return { success: false, message: response.data.message || "Failed to update status" };
+            }
+        }
+        catch (err) {
+            return {
+                success: false,
+                message: err.response?.data?.message || "Failed to update status",
+            };
+        }
+    };
+    const assignTemplate = async (id, templateId) => {
+        try {
+            const response = await machineOrdersAPI.assignTemplate(id, templateId);
+            if (response.data.success) {
+                // Update in list
+                const index = machineOrders.value.findIndex((order) => order.id === id);
+                if (index !== -1) {
+                    machineOrders.value[index] = { ...machineOrders.value[index], ...response.data.data.machine_order };
+                }
+                // Update current if it's the same
+                if (currentMachineOrder.value?.id === id) {
+                    currentMachineOrder.value = { ...currentMachineOrder.value, ...response.data.data.machine_order };
+                }
+                return { success: true, data: response.data.data };
+            }
+            else {
+                return { success: false, message: response.data.message || "Failed to assign template" };
+            }
+        }
+        catch (err) {
+            return {
+                success: false,
+                message: err.response?.data?.message || "Failed to assign template",
+            };
+        }
+    };
+    return {
+        machineOrders,
+        currentMachineOrder,
+        isLoading,
+        error,
+        fetchMachineOrders,
+        fetchMachineOrderById,
+        createMachineOrder,
+        updateMachineOrderStatus,
+        assignTemplate,
+    };
+});
+//# sourceMappingURL=machineOrders.js.map
