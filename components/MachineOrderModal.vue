@@ -1,7 +1,7 @@
 <template>
   <ion-modal
       :is-open="isOpen"
-      @did-dismiss="$emit('close')"
+      @did-dismiss="handleModalDismiss"
       :initial-breakpoint="existingOrder ? 1 : 0.6"
       :breakpoints="[0, 0.6, 0.9, 1]"
   >
@@ -18,13 +18,13 @@
 
     <ion-content class="ion-padding">
       <!-- Loading -->
-      <div v-if="isLoading" class="loading-container">
+      <div v-show="isLoading" class="loading-container">
         <ion-spinner name="crescent"></ion-spinner>
         <p>{{ existingOrder ? 'Loading machine order...' : 'Checking existing orders...' }}</p>
       </div>
 
       <!-- Existing Order -->
-      <div v-else-if="existingOrder">
+      <div v-if="existingOrder">
         <!-- Machine Order Details -->
         <ion-card>
           <ion-card-header>
@@ -34,17 +34,17 @@
           <ion-card-content>
             <div class="detail-row">
               <ion-label>Status:</ion-label>
-              <ion-chip :color="getStatusColor(existingOrder.status)">
-                {{ getStatusLabel(existingOrder.status) }}
+              <ion-chip :color="getStatusColor(existingOrder?.status || 0)">
+                {{ getStatusLabel(existingOrder?.status || 0) }}
               </ion-chip>
             </div>
-            <div class="detail-row" v-if="existingOrder.template">
+            <div class="detail-row" v-show="existingOrder?.template">
               <ion-label>Template:</ion-label>
-              <span>{{ existingOrder.template.name }}</span>
+              <span>{{ existingOrder?.template?.name }}</span>
             </div>
-            <div class="detail-row" v-if="existingOrder.date">
+            <div class="detail-row" v-show="existingOrder?.date">
               <ion-label>Date:</ion-label>
-              <span>{{ formatDate(existingOrder.date) }}</span>
+              <span>{{ formatDate(existingOrder?.date || '') }}</span>
             </div>
           </ion-card-content>
         </ion-card>
@@ -55,7 +55,12 @@
             <ion-card-title>Notes</ion-card-title>
           </ion-card-header>
           <ion-card-content>
-            <DrawingPreview :drawing-id="notesDrawingId" />
+            <DrawingPreview
+                :drawing-id="notesDrawingId"
+                :order-id="props.orderAddressId"
+                :machine-order-id="existingOrder?.id"
+                result-type="notes"
+            />
           </ion-card-content>
         </ion-card>
 
@@ -85,51 +90,45 @@
             <ion-button
                 @click="assignTemplate"
                 expand="block"
-                :disabled="selectedTemplateId === (existingOrder.template?.id || '')"
+                :disabled="selectedTemplateId === (existingOrder?.template?.id || '')"
             >
               {{ selectedTemplateId ? 'Assign Template' : 'Remove Template' }}
             </ion-button>
 
-            <!-- Moved template drawing inside Template card, removed title -->
-            <div v-if="existingOrder.template" style="margin-top: 1.5rem;">
+            <div v-show="existingOrder?.template" style="margin-top: 1.5rem;">
               <DrawingPreview
                   :drawing-id="templateDrawingId"
                   :initial-image-url="selectedTemplateImageUrl"
                   :key="templateDrawingId"
+                  :order-id="props.orderAddressId"
+                  :machine-order-id="existingOrder?.id"
+                  result-type="template"
               />
             </div>
           </ion-card-content>
         </ion-card>
 
-        <!-- Template Drawing Section -->
-        <!-- <DrawingPreview
-          v-if="existingOrder.template"
-          :drawing-id="templateDrawingId"
-          title="Template Drawing"
-          :initial-image-url="selectedTemplateImageUrl"
-        /> -->
-
         <!-- Template Form -->
-        <ion-card v-if="existingOrder.template?.form_sections?.length">
+        <ion-card v-show="existingOrder?.template?.form_sections?.length">
           <ion-card-header>
-            <ion-card-title>{{ existingOrder.template.form_title || 'Template Form' }}</ion-card-title>
+            <ion-card-title>{{ existingOrder?.template?.form_title || 'Template Form' }}</ion-card-title>
           </ion-card-header>
           <ion-card-content>
-            <div v-for="section in existingOrder.template.form_sections" :key="section.id" class="form-section">
+            <div v-for="section in existingOrder?.template?.form_sections || []" :key="section.id" class="form-section">
               <h3>{{ section.title }}</h3>
-              <p v-if="section.description">{{ section.description }}</p>
+              <p v-show="section.description">{{ section.description }}</p>
 
               <div v-for="field in section.fields" :key="field.id" class="form-field">
                 <ion-item>
                   <ion-label position="stacked">
                     {{ field.label }}
-                    <span v-if="field.required" class="required">*</span>
+                    <span v-show="field.required" class="required">*</span>
                   </ion-label>
 
-                  <ion-input v-if="field.type === 'text'" v-model="formResponses[field.id]" :placeholder="field.label" />
-                  <ion-textarea v-else-if="field.type === 'textarea'" v-model="formResponses[field.id]" :placeholder="field.label" :rows="3" />
+                  <ion-input v-show="field.type === 'text'" v-model="formResponses[field.id]" :placeholder="field.label" />
+                  <ion-textarea v-show="field.type === 'textarea'" v-model="formResponses[field.id]" :placeholder="field.label" :rows="3" />
                   <ion-select
-                      v-else-if="field.type === 'select'"
+                      v-show="field.type === 'select'"
                       v-model="formResponses[field.id]"
                       interface="popover"
                   >
@@ -137,8 +136,8 @@
                       {{ option }}
                     </ion-select-option>
                   </ion-select>
-                  <ion-checkbox v-else-if="field.type === 'checkbox'" v-model="formResponses[field.id]" />
-                  <ion-input v-else-if="field.type === 'number'" v-model="formResponses[field.id]" type="number" :placeholder="field.label" />
+                  <ion-checkbox v-show="field.type === 'checkbox'" v-model="formResponses[field.id]" />
+                  <ion-input v-show="field.type === 'number'" v-model="formResponses[field.id]" type="number" :placeholder="field.label" />
                 </ion-item>
               </div>
             </div>
@@ -152,63 +151,31 @@
         <!-- Status Update -->
         <ion-card>
           <ion-card-header>
-            <ion-card-title>Update Status & Details</ion-card-title>
+            <ion-card-title>Status Update</ion-card-title>
           </ion-card-header>
           <ion-card-content>
             <ion-item>
-              <ion-select
-                  v-model="selectedStatus"
-                  placeholder="Select status"
-                  interface="popover"
-                  label="Status"
-              >
-                <ion-select-option value="0">To Do</ion-select-option>
-                <ion-select-option value="1">No Issues</ion-select-option>
-                <ion-select-option value="2">Remark</ion-select-option>
-                <ion-select-option value="3">Severe Issue</ion-select-option>
-                <ion-select-option value="4">Retired</ion-select-option>
-              </ion-select>
+              <ion-label>Finished</ion-label>
+              <ion-toggle v-model="isFinished" @ionChange="updateFinished"></ion-toggle>
             </ion-item>
-
-            <ion-item>
-              <ion-label position="stacked">Issues</ion-label>
-              <ion-textarea
-                  v-model="issues"
-                  placeholder="Describe any issues..."
-                  :rows="3"
-              ></ion-textarea>
-            </ion-item>
-
-            <ion-item>
-              <ion-label position="stacked">Remarks</ion-label>
-              <ion-textarea
-                  v-model="remarks"
-                  placeholder="Additional remarks..."
-                  :rows="3"
-              ></ion-textarea>
-            </ion-item>
-
-            <ion-button @click="updateStatus" expand="block">
-              Update Machine Order
-            </ion-button>
           </ion-card-content>
         </ion-card>
       </div>
 
       <!-- New Order -->
-      <div v-else>
+      <div v-else-if="!existingOrder">
         <ion-card>
           <ion-card-header>
             <ion-card-title>Create Machine Order</ion-card-title>
             <ion-card-subtitle>{{ machine?.internal_number }}</ion-card-subtitle>
           </ion-card-header>
           <ion-card-content>
-            <div v-if="suggestedTemplate" class="suggested-template">
+            <div v-show="suggestedTemplate" class="suggested-template">
               <ion-item>
                 <ion-icon :icon="bulbOutline" slot="start" color="warning"></ion-icon>
                 <ion-label>
                   <h3>Suggested Template</h3>
-                  <p>{{ suggestedTemplate.name }}</p>
+                  <p>{{ suggestedTemplate?.name }}</p>
                   <p><small>Based on previous orders for this machine</small></p>
                 </ion-label>
               </ion-item>
@@ -269,6 +236,7 @@ import {
   IonCheckbox,
   IonSpinner,
   IonChip,
+  IonToggle,
   toastController,
 } from '@ionic/vue'
 import { closeOutline, bulbOutline } from 'ionicons/icons'
@@ -297,6 +265,7 @@ const selectedStatus = ref('0')
 const issues = ref('')
 const remarks = ref('')
 const formResponses = ref({})
+const isFinished = ref(false)
 
 const availableTemplates = computed(() => {
   return templatesStore.templates?.filter(t => t.is_active !== false) || []
@@ -411,24 +380,24 @@ const saveFormResponses = async () => {
   await toast.present()
 }
 
-watch(() => props.isOpen, async (isOpen) => {
-  if (isOpen) {
-    await checkExistingOrder()
-  }
-  else {
-    existingOrder.value = null
-    suggestedTemplate.value = null
-    selectedTemplateId.value = ''
-    selectedStatus.value = '0'
-    issues.value = ''
-    remarks.value = ''
-    formResponses.value = {}
-  }
-}, { immediate: true })
-
-onMounted(async () => {
-  await templatesStore.fetchTemplates()
-})
+const updateFinished = async () => {
+  if (!existingOrder.value) return
+  try {
+    const result = await machineOrdersStore.updateMachineOrderStatus(existingOrder.value.id, {
+      finished: isFinished.value ? 1 : 0,
+    })
+    const toast = await toastController.create({
+      message: result.success ? 'Machine order updated' : result.message || 'Failed',
+      duration: 2000,
+      color: result.success ? 'success':'danger',
+    })
+    await toast.present()
+    if (result.success) {
+      existingOrder.value = { ...existingOrder.value, ...result.data.machine_order }
+      emit('updated')
+    }
+  } catch (e) { console.error(e) }
+}
 
 const checkExistingOrder = async () => {
   if (!props.machine || !props.orderAddressId) return
@@ -443,6 +412,7 @@ const checkExistingOrder = async () => {
       issues.value = existing.issues || ''
       remarks.value = existing.remarks || ''
       selectedTemplateId.value = existing.template?.id || ''
+      isFinished.value = existing.finished || false
       if (existing.form_responses) {
         const responses: Record<string, any> = {}
         existing.form_responses.forEach(r => { responses[r.field_id] = r.response_data })
@@ -465,6 +435,42 @@ const checkExistingOrder = async () => {
   } catch (e) { console.error(e) }
   finally { isLoading.value = false }
 }
+
+const handleModalDismiss = () => {
+  const tabBar = document.querySelector('ion-tab-bar')
+  if (tabBar) {
+    tabBar.style.display = 'flex'
+  }
+  emit('close')
+}
+
+watch(() => props.isOpen, async (isOpen) => {
+  if (isOpen) {
+    const tabBar = document.querySelector('ion-tab-bar')
+    if (tabBar) {
+      tabBar.style.display = 'none'
+    }
+    await checkExistingOrder()
+  }
+  else {
+    const tabBar = document.querySelector('ion-tab-bar')
+    if (tabBar) {
+      tabBar.style.display = 'flex'
+    }
+    existingOrder.value = null
+    suggestedTemplate.value = null
+    selectedTemplateId.value = ''
+    selectedStatus.value = '0'
+    issues.value = ''
+    remarks.value = ''
+    formResponses.value = {}
+    isFinished.value = false
+  }
+}, { immediate: true })
+
+onMounted(async () => {
+  await templatesStore.fetchTemplates()
+})
 </script>
 
 <style scoped>

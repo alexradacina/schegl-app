@@ -37,6 +37,7 @@
           </div>
           <DrawingPreview
               v-if="assignment"
+              :order-id="assignment.order?.id"
               :drawing-id="`assignment_${assignment.id}`"
           />
         </div>
@@ -108,7 +109,7 @@
 
       <!-- Modals (v-show instead of v-if) -->
       <CreateMachineModal v-show="showCreateMachine" :is-open="showCreateMachine" :address-id="assignment?.address?.id" :customer-id="assignment?.order?.customer?.id" @close="showCreateMachine = false" @created="onMachineCreated"/>
-      <MachineOrderModal v-show="showMachineOrderModal" :is-open="showMachineOrderModal" :machine="selectedMachine" :order-address-id="getOrderAddressId()" @close="showMachineOrderModal = false" @created="onMachineOrderCreated" @updated="onMachineOrderUpdated"/>
+      <MachineOrderModal v-show="showMachineOrderModal" :is-open="showMachineOrderModal" :machine="selectedMachine" :order-address-id="assignment?.order?.id" @close="showMachineOrderModal = false" @created="onMachineOrderCreated" @updated="onMachineOrderUpdated"/>
       <ion-modal :is-open="showFilterModal" @didDismiss="showFilterModal = false">
         <ion-header>
           <ion-toolbar>

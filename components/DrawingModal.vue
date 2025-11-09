@@ -3,140 +3,158 @@
     <ion-page>
       <ion-header>
         <ion-toolbar class="drawing-toolbar">
-          <div class="toolbar-content">
-            <!-- Tool selection with simpler icons -->
-            <div class="tool-section">
-              <button
-                  class="tool-btn"
-                  :class="{ active: currentTool === 'pencil' }"
-                  @click="selectTool('pencil')"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                </svg>
-              </button>
-
-              <button
-                  class="tool-btn"
-                  :class="{ active: currentTool === 'eraser' }"
-                  @click="selectTool('eraser')"
-              >
-                <!-- Updated eraser icon to match reference (tilted rectangle) -->
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M7 21h10M5.5 13.5l-2.121 2.121a2 2 0 0 0 0 2.828l2.172 2.172a2 2 0 0 0 2.828 0L20.5 8.5a2 2 0 0 0 0-2.828l-2.172-2.172a2 2 0 0 0-2.828 0L5.5 13.5z"/>
-                </svg>
-              </button>
-
-              <button
-                  class="tool-btn"
-                  :class="{ active: currentTool === 'select' }"
-                  @click="selectTool('select')"
-              >
-                <!-- Updated select icon to simpler four-arrow design -->
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 2v6m0 8v6M2 12h6m8 0h6"/>
-                  <polyline points="9 5 12 2 15 5"/>
-                  <polyline points="5 9 2 12 5 15"/>
-                  <polyline points="15 19 12 22 9 19"/>
-                  <polyline points="19 15 22 12 19 9"/>
-                </svg>
-              </button>
-
-              <button
-                  class="tool-btn"
-                  :class="{ active: currentTool === 'image' }"
-                  @click="selectTool('image')"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <path d="M21 15l-5-5L5 21"/>
-                </svg>
-              </button>
-            </div>
-
-            <!-- Added spacing divider between sections -->
-            <div class="divider"></div>
-
-            <!-- Color picker for pencil tool -->
-            <div class="color-section" v-if="currentTool === 'pencil'">
-              <div class="line-sizes">
+          <!-- Made toolbar responsive: two rows on screens < 1200px -->
+          <div class="toolbar-content" :class="{ 'toolbar-wrap': true }">
+            <div class="toolbar-row">
+              <!-- Tool selection with simpler icons -->
+              <div class="tool-section">
                 <button
-                    v-for="size in lineSizes"
-                    :key="size.value"
-                    class="size-btn"
-                    :class="{ active: pencilOptions.strokeWidth === size.value }"
-                    @click="pencilOptions.strokeWidth = size.value"
+                    class="tool-btn"
+                    :class="{ active: currentTool === 'pencil' }"
+                    @click="selectTool('pencil')"
                 >
-                  <div class="size-dot" :style="{ width: size.display + 'px', height: size.display + 'px' }"></div>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                  </svg>
+                </button>
+
+                <button
+                    class="tool-btn"
+                    :class="{ active: currentTool === 'eraser' }"
+                    @click="selectTool('eraser')"
+                >
+                  <!-- Updated eraser icon to match reference (tilted rectangle) -->
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M7 21h10M5.5 13.5l-2.121 2.121a2 2 0 0 0 0 2.828l2.172 2.172a2 2 0 0 0 2.828 0L20.5 8.5a2 2 0 0 0 0-2.828l-2.172-2.172a2 2 0 0 0-2.828 0L5.5 13.5z"/>
+                  </svg>
+                </button>
+
+                <button
+                    class="tool-btn"
+                    :class="{ active: currentTool === 'select' }"
+                    @click="selectTool('select')"
+                >
+                  <!-- Updated select icon to simpler four-arrow design -->
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v6m0 8v6M2 12h6m8 0h6"/>
+                    <polyline points="9 5 12 2 15 5"/>
+                    <polyline points="5 9 2 12 5 15"/>
+                    <polyline points="15 19 12 22 9 19"/>
+                    <polyline points="19 15 22 12 19 9"/>
+                  </svg>
+                </button>
+
+                <button
+                    class="tool-btn"
+                    :class="{ active: currentTool === 'image' }"
+                    @click="selectTool('image')"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="M21 15l-5-5L5 21"/>
+                  </svg>
                 </button>
               </div>
 
+              <!-- Added spacing divider between sections -->
               <div class="divider"></div>
 
-              <!-- Replaced native color input with Ionic popover for iPad compatibility -->
-              <div class="color-picker">
-                <div
-                    v-for="color in predefinedColors"
-                    :key="color.value"
-                    class="color-swatch"
-                    :class="{ active: pencilOptions.color === color.value }"
-                    :style="{
-                    backgroundColor: color.value,
-                    border: pencilOptions.color === color.value ? '3px solid #4a9eff' : (color.value === '#ffffff' ? '2px solid #ddd' : '2px solid transparent')
-                  }"
-                    @click="pencilOptions.color = color.value"
-                ></div>
-
-                <!-- Color picker button with popover -->
-                <div class="color-picker-btn" @click="showColorPopover = true">
-                  <div class="rainbow-swatch"></div>
+              <!-- Color picker for pencil tool -->
+              <div class="color-section" v-show="currentTool === 'pencil'">
+                <div class="line-sizes">
+                  <button
+                      v-for="size in lineSizes"
+                      :key="size.value"
+                      class="size-btn"
+                      :class="{ active: pencilOptions.strokeWidth === size.value }"
+                      @click="pencilOptions.strokeWidth = size.value"
+                  >
+                    <div class="size-dot" :style="{ width: size.display + 'px', height: size.display + 'px' }"></div>
+                  </button>
                 </div>
+
+                <div class="divider"></div>
+
+                <!-- Simplified color swatches to avoid linter false positive -->
+                <div class="color-picker">
+                  <div
+                      class="color-swatch color-black"
+                      :class="{ active: pencilOptions.color === '#000000' }"
+                      @click="pencilOptions.color = '#000000'"
+                  ></div>
+
+                  <div
+                      class="color-swatch color-blue"
+                      :class="{ active: pencilOptions.color === '#0000ff' }"
+                      @click="pencilOptions.color = '#0000ff'"
+                  ></div>
+
+                  <div
+                      class="color-swatch color-red"
+                      :class="{ active: pencilOptions.color === '#ff0000' }"
+                      @click="pencilOptions.color = '#ff0000'"
+                  ></div>
+
+                  <div
+                      class="color-swatch color-yellow"
+                      :class="{ active: pencilOptions.color === '#ffeb3b' }"
+                      @click="pencilOptions.color = '#ffeb3b'"
+                  ></div>
+
+                  <!-- Color picker button with popover -->
+                  <div class="color-picker-btn" @click="showColorPopover = true">
+                    <div class="rainbow-swatch"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="spacer"></div>
+
+              <!-- Made canvas size editable with input fields -->
+              <div class="size-info">
+                <input
+                    type="number"
+                    v-model.number="canvasSize.width"
+                    @change="resizeCanvas"
+                    class="size-input"
+                    min="100"
+                />
+                <span class="size-separator">×</span>
+                <input
+                    type="number"
+                    v-model.number="canvasSize.height"
+                    @change="resizeCanvas"
+                    class="size-input"
+                    min="100"
+                />
+                <!-- Made fit to screen button bigger to match left icons -->
+                <button class="action-btn" @click="fitToScreen" title="Fit to screen">
+                  <ion-icon :icon="expandOutline"></ion-icon>
+                </button>
               </div>
             </div>
 
-            <div class="spacer"></div>
-
-            <!-- Made canvas size editable with input fields -->
-            <div class="size-info">
-              <input
-                  type="number"
-                  v-model.number="canvasSize.width"
-                  @change="resizeCanvas"
-                  class="size-input"
-                  min="100"
-              />
-              <span class="size-separator">×</span>
-              <input
-                  type="number"
-                  v-model.number="canvasSize.height"
-                  @change="resizeCanvas"
-                  class="size-input"
-                  min="100"
-              />
-              <!-- Made fit to screen button bigger to match left icons -->
-              <button class="action-btn" @click="fitToScreen" title="Fit to screen">
-                <ion-icon :icon="expandOutline"></ion-icon>
-              </button>
-            </div>
-
-            <!-- Made action buttons bigger to match left tool icons -->
-            <div class="action-section">
-              <button class="action-btn" @click="undo" :disabled="!canUndo" title="Undo">
-                <ion-icon :icon="arrowUndoOutline"></ion-icon>
-              </button>
-              <button class="action-btn" @click="redo" :disabled="!canRedo" title="Redo">
-                <ion-icon :icon="arrowRedoOutline"></ion-icon>
-              </button>
-              <button class="action-btn" @click="confirmClearCanvas" title="Clear all">
-                <ion-icon :icon="trashOutline"></ion-icon>
-              </button>
-              <button class="action-btn" @click="downloadCanvas" title="Download">
-                <ion-icon :icon="downloadOutline"></ion-icon>
-              </button>
-              <button class="action-btn" @click="handleClose" title="Close">
-                <ion-icon :icon="closeOutline"></ion-icon>
-              </button>
+            <!-- Added second row for action buttons on small screens -->
+            <div class="toolbar-row toolbar-row-actions">
+              <!-- Made action buttons bigger to match left tool icons -->
+              <div class="action-section">
+                <button class="action-btn" @click="undo" :disabled="!canUndo" title="Undo">
+                  <ion-icon :icon="arrowUndoOutline"></ion-icon>
+                </button>
+                <button class="action-btn" @click="redo" :disabled="!canRedo" title="Redo">
+                  <ion-icon :icon="arrowRedoOutline"></ion-icon>
+                </button>
+                <button class="action-btn" @click="confirmClearCanvas" title="Clear all">
+                  <ion-icon :icon="trashOutline"></ion-icon>
+                </button>
+                <button class="action-btn" @click="downloadCanvas" title="Download">
+                  <ion-icon :icon="downloadOutline"></ion-icon>
+                </button>
+                <button class="action-btn" @click="handleClose" title="Close">
+                  <ion-icon :icon="closeOutline"></ion-icon>
+                </button>
+              </div>
             </div>
           </div>
         </ion-toolbar>
@@ -157,6 +175,7 @@
               </svg>
             </button>
 
+            <!-- Moved button further left to avoid scrollbar overlap -->
             <button v-if="props.initialImageUrl" class="load-template-btn" @click="loadTemplateImage">
               + Load Template
             </button>
@@ -222,6 +241,7 @@ import { fabric } from 'fabric';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import { useImagePicker } from '@/composables/useImagePicker';
+import { useOrderResults } from '@/composables/useOrderResults';
 
 const props = defineProps({
   isOpen: {
@@ -235,6 +255,19 @@ const props = defineProps({
   initialImageUrl: {
     type: String,
     default: ''
+  },
+  orderId: {
+    type: Number,
+    default: null
+  },
+  machineOrderId: {
+    type: Number,
+    default: null
+  },
+  resultType: {
+    type: String,
+    default: 'notes', // 'notes' or 'template'
+    validator: (value) => ['notes', 'template'].includes(value)
   }
 });
 
@@ -323,8 +356,15 @@ const isTemplateDrawing = computed(() => {
 
 const showColorPopover = ref(false); // Added popover state
 
+const { createOrderResult, updateOrderResult, canvasToBlob } = useOrderResults();
+let existingResultId = ref(null);
+
 const handleClose = async () => {
-  await saveDrawing();
+  if (autoSaveInterval.value) {
+    clearInterval(autoSaveInterval.value);
+    autoSaveInterval.value = null;
+  }
+  await saveDrawingToAPI();
   cleanupCanvas();
   emit('close');
 };
@@ -357,8 +397,8 @@ const saveDrawing = async () => {
   try {
     const jsonData = JSON.stringify(data);
 
+    // Save locally (filesystem or localStorage)
     if (isNative) {
-      // Native: Use Capacitor Filesystem with UTF8 encoding
       await Filesystem.writeFile({
         path: `drawings/drawing_${props.drawingId}.json`,
         data: jsonData,
@@ -368,7 +408,6 @@ const saveDrawing = async () => {
       });
       console.log('[v0] Drawing saved to filesystem (native)');
     } else {
-      // Web: Use localStorage as fallback
       localStorage.setItem(`drawing_${props.drawingId}`, jsonData);
       console.log('[v0] Drawing saved to localStorage (web)');
     }
@@ -377,6 +416,84 @@ const saveDrawing = async () => {
   } catch (error) {
     console.error('[v0] Error saving drawing:', error);
     saveStatus.value = 'error';
+  }
+};
+
+const saveDrawingToAPI = async () => {
+  if (!canvas || !props.orderId) {
+    console.log('[v0] Skipping API save - canvas:', !!canvas, 'orderId:', props.orderId);
+    return;
+  }
+
+  console.log('[v0] Saving drawing to API - orderId:', props.orderId, 'machineOrderId:', props.machineOrderId, 'type:', props.resultType);
+
+  const json = canvas.toJSON(['data']);
+
+  let imageBlob;
+  if (props.resultType === 'notes') {
+    // Create temp canvas with background
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Draw white background
+    tempCtx.fillStyle = '#ffffff';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    // Draw grid lines
+    tempCtx.strokeStyle = '#e0f0ff';
+    tempCtx.lineWidth = 1;
+
+    for (let x = 0; x <= tempCanvas.width; x += 20) {
+      tempCtx.beginPath();
+      tempCtx.moveTo(x, 0);
+      tempCtx.lineTo(x, tempCanvas.height);
+      tempCtx.stroke();
+    }
+
+    for (let y = 0; y <= tempCanvas.height; y += 20) {
+      tempCtx.beginPath();
+      tempCtx.moveTo(0, y);
+      tempCtx.lineTo(tempCanvas.width, y);
+      tempCtx.stroke();
+    }
+
+    // Draw canvas content on top
+    const canvasDataURL = canvas.toDataURL('image/png');
+    const img = new Image();
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.src = canvasDataURL;
+    });
+    tempCtx.drawImage(img, 0, 0);
+
+    // Convert to blob
+    imageBlob = await new Promise(resolve => {
+      tempCanvas.toBlob(resolve, 'image/png', 1);
+    });
+  } else {
+    // For templates, use regular canvas export
+    imageBlob = await canvasToBlob(canvas);
+  }
+
+  try {
+    const result = await createOrderResult(
+        props.orderId,
+        props.resultType,
+        json,
+        imageBlob || undefined,
+        props.machineOrderId || null
+    );
+
+    if (result.success) {
+      existingResultId.value = result.result?.id || existingResultId.value;
+      console.log('[v0] Drawing saved to API successfully, result ID:', existingResultId.value);
+    } else {
+      console.error('[v0] Failed to save drawing to API:', result.message);
+    }
+  } catch (error) {
+    console.error('[v0] Error saving to API:', error);
   }
 };
 
@@ -667,6 +784,8 @@ const openColorPicker = () => {
   colorInputRef.value.click();
 };
 
+const autoSaveInterval = ref(null);
+
 watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
     await new Promise(resolve => setTimeout(resolve, 300));
@@ -676,11 +795,39 @@ watch(() => props.isOpen, async (isOpen) => {
     } else {
       await loadDrawing();
     }
+
+    if (props.orderId && !autoSaveInterval.value) {
+      autoSaveInterval.value = setInterval(async () => {
+        console.log('[v0] Auto-saving drawing to API');
+        await saveDrawingToAPI();
+      }, 120000); // 2 minutes = 120000ms
+    }
   } else {
+    if (autoSaveInterval.value) {
+      clearInterval(autoSaveInterval.value);
+      autoSaveInterval.value = null;
+    }
+
     if (canvas) {
       await saveDrawing();
       cleanupCanvas();
     }
+  }
+});
+
+watch(() => pencilOptions.color, (newColor) => {
+  console.log('[v0] Color changed to:', newColor);
+  if (canvas && canvas.freeDrawingBrush && currentTool.value === 'pencil') {
+    canvas.freeDrawingBrush.color = newColor;
+    console.log('[v0] Canvas brush color updated to:', newColor);
+  }
+});
+
+watch(() => pencilOptions.strokeWidth, (newWidth) => {
+  console.log('[v0] Stroke width changed to:', newWidth);
+  if (canvas && canvas.freeDrawingBrush && currentTool.value === 'pencil') {
+    canvas.freeDrawingBrush.width = newWidth;
+    console.log('[v0] Canvas brush width updated to:', newWidth);
   }
 });
 
@@ -986,6 +1133,11 @@ onUnmounted(() => {
     clearTimeout(saveTimeout);
   }
 
+  if (autoSaveInterval.value) {
+    clearInterval(autoSaveInterval.value);
+    autoSaveInterval.value = null;
+  }
+
   document.removeEventListener('touchmove', handleScrollDrag);
   document.removeEventListener('touchend', stopScrollDrag);
   document.removeEventListener('mousemove', handleScrollDrag);
@@ -1119,9 +1271,52 @@ const scrollStartY = ref(0);
 
 .toolbar-content {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+/* Added responsive layout: single row on large screens, two rows on small */
+.toolbar-row {
+  display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 16px;
+}
+
+.toolbar-row-actions {
+  display: none;
+}
+
+/* On screens larger than 1200px, show in single row */
+@media (min-width: 1200px) {
+  .toolbar-content {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .toolbar-row-actions {
+    display: flex;
+  }
+
+  .toolbar-row .action-section {
+    display: none;
+  }
+}
+
+/* On screens smaller than 1200px, show in two rows */
+@media (max-width: 1199px) {
+  .toolbar-content {
+    flex-direction: column;
+  }
+
+  .toolbar-row-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .toolbar-row .action-section {
+    display: none;
+  }
 }
 
 .tool-section {
@@ -1263,7 +1458,7 @@ const scrollStartY = ref(0);
 .load-template-btn {
   position: fixed;
   bottom: 20px;
-  right: 20px;
+  right: 80px; /* Moved further left to avoid scrollbar overlap */
   padding: 10px 20px;
   border-radius: 20px;
   border: 1px solid #dee2e6;
@@ -1331,10 +1526,33 @@ const scrollStartY = ref(0);
   cursor: pointer;
   transition: all 0.2s ease;
   box-sizing: border-box;
+  border: 2px solid transparent;
 }
 
 .color-swatch:hover {
   transform: scale(1.1);
+}
+
+.color-swatch.color-black {
+  background-color: #000000;
+}
+
+.color-swatch.color-blue {
+  background-color: #0000ff;
+}
+
+.color-swatch.color-red {
+  background-color: #ff0000;
+}
+
+.color-swatch.color-yellow {
+  background-color: #ffeb3b;
+  border-color: #ddd;
+}
+
+.color-swatch.active {
+  border-color: #4a9eff;
+  border-width: 3px;
 }
 
 .rainbow-swatch {
@@ -1477,12 +1695,12 @@ ion-popover {
 .custom-scrollbar-overlay {
   position: absolute;
   top: 0;
-  right: 0;
+  right: 0; /* Flush against right edge */
   bottom: 0;
   width: 50px;
   pointer-events: none;
   z-index: 1000;
-  padding: 10px;
+  padding: 10px 0 10px 10px; /* No padding on right, only on left/top/bottom */
 }
 
 .scrollbar-track-vertical {

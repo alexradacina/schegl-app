@@ -2,7 +2,7 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
-        <ion-title>Tour</ion-title>
+        <ion-title>Tourr</ion-title>
         <ion-buttons slot="end">
           <ion-button @click="downloadRoutePlan" :disabled="isDownloading">
             <ion-icon :icon="downloadOutline" />

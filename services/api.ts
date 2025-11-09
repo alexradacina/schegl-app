@@ -87,4 +87,19 @@ export const routeAssignmentsAPI = {
     getRouteMessages: () => api.get("/route-messages"),
 }
 
+// Order Results API endpoints
+export const orderResultsAPI = {
+    getAll: (params?: any) => api.get("/order-results", { params }),
+    getById: (id: number) => api.get(`/order-results/${id}`),
+    create: (formData: FormData) =>
+        api.post("/order-results", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        }),
+    update: (id: number, formData: FormData) =>
+        api.put(`/order-results/${id}`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        }),
+    delete: (id: number) => api.delete(`/order-results/${id}`),
+}
+
 export default api

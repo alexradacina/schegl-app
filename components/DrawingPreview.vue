@@ -27,6 +27,9 @@
       :is-open="showDrawingModal"
       :drawing-id="drawingId"
       :initial-image-url="initialImageUrl || ''"
+      :order-id="orderId"
+      :machine-order-id="machineOrderId"
+      :result-type="resultType"
       @close="handleDrawingClose"
   />
 </template>
@@ -44,6 +47,9 @@ interface Props {
   drawingId: string
   title?: string
   initialImageUrl?: string
+  orderId?: number
+  machineOrderId?: number
+  resultType?: 'notes' | 'template'
 }
 
 const props = defineProps<Props>()
