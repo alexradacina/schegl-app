@@ -64,8 +64,36 @@
           </ion-card-content>
         </ion-card>
 
+        <!-- Last Inspection Issues Section -->
+        <ion-card v-if="showLastInspectionIssues">
+          <ion-card-header>
+            <ion-card-title>Last Inspection Issues - {{ props.machine?.lastOrder?.created_at }}</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div v-if="!props.machine?.lastOrder?.issues || lastInspectionIssues.length === 0" class="no-issues">
+              No issues from last inspection
+            </div>
+            <div v-else class="issues-list">
+              <div
+                  v-for="(issue, index) in lastInspectionIssues"
+                  :key="index"
+                  :class="['issue-item', getIssueClass(issue)]"
+              >
+                <div class="issue-text">{{ issue.text }}</div>
+                <ion-button
+                    size="small"
+                    :color="issue.resolved ? 'success' : 'medium'"
+                    @click="toggleIssueResolved(index)"
+                >
+                  {{ issue.resolved ? 'Resolved' : 'Mark Resolved' }}
+                </ion-button>
+              </div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+
         <!-- Template Selection -->
-        <ion-card>
+        <ion-card v-if="!showLastInspectionIssues">
           <ion-card-header>
             <ion-card-title>Template</ion-card-title>
           </ion-card-header>
@@ -109,7 +137,7 @@
         </ion-card>
 
         <!-- Template Form -->
-        <ion-card v-show="existingOrder?.template?.form_sections?.length && 0==1">
+        <ion-card v-show="existingOrder?.template?.form_sections?.length && 0==1 && !showLastInspectionIssues">
           <ion-card-header>
             <ion-card-title>{{ existingOrder?.template?.form_title || 'Template Form' }}</ion-card-title>
           </ion-card-header>
@@ -267,6 +295,7 @@ const issues = ref('')
 const remarks = ref('')
 const formResponses = ref({})
 const isFinished = ref(false)
+const lastInspectionIssues = ref<any[]>([])
 
 const availableTemplates = computed(() => {
   return templatesStore.templates?.filter(t => t.is_active !== false) || []
@@ -437,7 +466,7 @@ const checkExistingOrder = async () => {
   finally { isLoading.value = false }
 }
 
-const handleModalDismiss = () => {
+const handleModalDismiss = async () => {
   const tabBar = document.querySelector('ion-tab-bar')
   if (tabBar) {
     tabBar.style.display = 'flex'
@@ -447,13 +476,41 @@ const handleModalDismiss = () => {
 
 watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
+    console.log('[v0] Modal opened, props.machine:', props.machine)
+    console.log('[v0] props.machine.lastOrder:', props.machine?.lastOrder)
+    console.log('[v0] props.machine.lastOrder.issues:', props.machine?.lastOrder?.issues)
+    console.log('[v0] showLastInspectionIssues:', showLastInspectionIssues.value)
+
     const tabBar = document.querySelector('ion-tab-bar')
     if (tabBar) {
       tabBar.style.display = 'none'
     }
     await checkExistingOrder()
+
+    if (showLastInspectionIssues.value && props.machine?.lastOrder?.issues) {
+      try {
+        // Parse the issues JSON string if it's a string, otherwise use as-is if it's already an array
+        if (typeof props.machine.lastOrder.issues === 'string') {
+          lastInspectionIssues.value = JSON.parse(props.machine.lastOrder.issues)
+        } else {
+          lastInspectionIssues.value = props.machine.lastOrder.issues
+        }
+        console.log('[v0] Initialized lastInspectionIssues:', lastInspectionIssues.value)
+        console.log('[v0] Initialized lastInspectionIssues length:', lastInspectionIssues.value.length)
+      } catch (e) {
+        console.error('[v0] Failed to parse issues:', e)
+        lastInspectionIssues.value = []
+      }
+    } else {
+      console.log('[v0] Not initializing lastInspectionIssues - showLastInspectionIssues:', showLastInspectionIssues.value, 'issues:', props.machine?.lastOrder?.issues)
+      lastInspectionIssues.value = []
+    }
   }
   else {
+    if (showLastInspectionIssues.value && lastInspectionIssues.value.length > 0) {
+      await saveLastInspectionIssues()
+    }
+
     const tabBar = document.querySelector('ion-tab-bar')
     if (tabBar) {
       tabBar.style.display = 'flex'
@@ -466,6 +523,7 @@ watch(() => props.isOpen, async (isOpen) => {
     remarks.value = ''
     formResponses.value = {}
     isFinished.value = false
+    lastInspectionIssues.value = []
   }
 }, { immediate: true })
 
@@ -506,6 +564,39 @@ const getMachineStatusLabel = (status: string) => {
       return 'New'
   }
 }
+
+const showLastInspectionIssues = computed(() => {
+  return props.machine?.lastOrder && props.machine.lastOrder.order_id !== props.orderId
+})
+
+const getIssueClass = (issue: any) => {
+  if (issue.resolved) return 'issue-resolved'
+  if (issue.status === 'severe_issue') return 'issue-severe'
+  if (issue.status === 'issue') return 'issue-warning'
+  return ''
+}
+
+const toggleIssueResolved = (index: number) => {
+  lastInspectionIssues.value[index].resolved = !lastInspectionIssues.value[index].resolved
+}
+
+const saveLastInspectionIssues = async () => {
+  if (!showLastInspectionIssues.value || !props.machine?.lastOrder?.id) return
+
+  try {
+    const issuesJson = JSON.stringify(lastInspectionIssues.value)
+
+    await machineOrdersStore.updateMachineOrderStatus(props.machine.lastOrder.id, {
+      issues: issuesJson
+    })
+
+    if (props.machine?.lastOrder) {
+      props.machine.lastOrder.issues = lastInspectionIssues.value
+    }
+  } catch (e) {
+    console.error('[v0] Failed to save last inspection issues:', e)
+  }
+}
 </script>
 
 <style scoped>
@@ -516,4 +607,41 @@ const getMachineStatusLabel = (status: string) => {
 .form-section h3 { margin:0 0 .5rem 0; color:var(--ion-color-primary); }
 .form-field { margin-bottom:1rem; }
 .required { color:var(--ion-color-danger); }
+
+.issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.issue-item {
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.issue-text {
+  flex: 1;
+}
+
+.issue-severe {
+  background-color: rgba(255, 59, 48, 0.1);
+}
+
+.issue-warning {
+  background-color: rgba(255, 204, 0, 0.1);
+}
+
+.issue-resolved {
+  background-color: rgba(52, 199, 89, 0.1);
+}
+
+.no-issues {
+  padding: 1rem;
+  text-align: center;
+  color: var(--ion-color-medium);
+}
 </style>

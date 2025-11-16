@@ -336,8 +336,36 @@ const goBack = () => router.push('/tabs/assignments')
 const getOrderAddressId = () => assignment.value?.order_address_id || assignment.value?.id
 
 const openMachineOrderModal = async (machine: any) => {
-  selectedMachine.value = machine
+  const orderAddressId = getOrderAddressId()
   await machineOrdersStore.fetchMachineOrders()
+
+  const existingOrder = machineOrdersStore.machineOrders.find(
+      o => o.machine?.id === machine.id && o.order_address_id === orderAddressId
+  )
+
+  if (!existingOrder) {
+    const machineOrderData = {
+      machine_id: machine.id,
+      order_address_id: orderAddressId,
+      status: 0,
+    }
+
+    const orderResult = await machineOrdersStore.createMachineOrder(machineOrderData)
+
+    if (orderResult.success) {
+      await machineOrdersStore.fetchMachineOrders()
+    } else {
+      const toast = await toastController.create({
+        message: orderResult.message || 'Failed to create machine order',
+        duration: 3000,
+        color: 'danger',
+      })
+      await toast.present()
+      return
+    }
+  }
+
+  selectedMachine.value = machine
   showMachineOrderModal.value = true
 }
 
@@ -485,11 +513,9 @@ const handleStatusChange = (filterKey: string, checked: boolean) => {
     }
   } else {
     statusFilters.value[filterKey] = checked
-    // If any specific filter is checked, uncheck "All"
     if (checked) {
       statusFilters.value.all = false
     }
-    // If no specific filters are checked, check "All"
     const anyChecked = statusFilters.value.new || statusFilters.value.no_issues ||
         statusFilters.value.issues || statusFilters.value.severe_issues ||
         statusFilters.value.retired
@@ -661,7 +687,6 @@ const getMachineStatusLabel = (status: string) => {
   padding-bottom: 80px;
 }
 
-/* Updated info message to match company header padding and icon size, and remove top margin */
 .info-message {
   display: flex;
   align-items: center;
@@ -676,7 +701,7 @@ const getMachineStatusLabel = (status: string) => {
 }
 
 .info-message ion-icon {
-  font-size: 1.8rem; /* Reduced icon size from 2.5rem to 1.8rem */
+  font-size: 1.8rem;
   color: #000;
   flex-shrink: 0;
 }
@@ -688,7 +713,6 @@ const getMachineStatusLabel = (status: string) => {
   line-height: 1.4;
 }
 
-/* Updated company header to remove margin-top */
 .company-header {
   padding: 1rem;
   background: var(--ion-color-light);
@@ -708,7 +732,7 @@ const getMachineStatusLabel = (status: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem; /* Reduced icon size from 2.5rem to 1.8rem */
+  font-size: 1.8rem;
   color: #000;
 }
 
@@ -793,7 +817,7 @@ const getMachineStatusLabel = (status: string) => {
 }
 
 .notes-section {
-  padding: 0 0 0 1rem; /* Added padding-left */
+  padding: 0 0 0 1rem;
   background: white;
   margin-left: -16px;
   margin-right: -16px;
@@ -805,7 +829,7 @@ const getMachineStatusLabel = (status: string) => {
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   background: white;
-  border-top: 1px solid #e0e0e0; /* Added border-top */
+  border-top: 1px solid #e0e0e0;
   border-bottom: 1px solid #e0e0e0;
   margin-left: -16px;
   margin-right: -16px;
@@ -848,7 +872,7 @@ const getMachineStatusLabel = (status: string) => {
 .machines-list {
   background: white;
   margin-left: -16px;
-  margin-right: -16px; /* Added negative margins for full width */
+  margin-right: -16px;
 }
 
 .machine-item {
@@ -991,7 +1015,6 @@ ion-icon.add-machine {
   font-weight: bolder;
 }
 
-/* Added background color classes for machine status */
 .bg-white {
   background: white;
 }
