@@ -1,6 +1,7 @@
 import { defineStore } from "pinia"
 import { ref } from "vue"
 import { machineOrdersAPI } from "@/services/api"
+import { useAssignmentsStore } from "./assignments"
 
 export const useMachineOrdersStore = defineStore("machineOrders", () => {
   const machineOrders = ref<any[]>([])
@@ -13,14 +14,21 @@ export const useMachineOrdersStore = defineStore("machineOrders", () => {
     error.value = null
 
     try {
-      const response = await machineOrdersAPI.getAll()
-      if (response.data.success) {
-        machineOrders.value = response.data.data.machine_orders || []
-      } else {
-        error.value = response.data.message || "Failed to fetch machine orders"
-      }
+      const assignmentsStore = useAssignmentsStore()
+
+      const allMachineOrders: any[] = []
+
+      assignmentsStore.assignments.forEach((assignment: any) => {
+        if (assignment.machine_orders && Array.isArray(assignment.machine_orders)) {
+          allMachineOrders.push(...assignment.machine_orders)
+        }
+      })
+
+      machineOrders.value = Array.from(new Map(allMachineOrders.map(mo => [mo.id, mo])).values())
+
+      console.log("[v0] Machine orders loaded from assignments:", machineOrders.value.length)
     } catch (err: any) {
-      error.value = err.response?.data?.message || "Failed to fetch machine orders"
+      error.value = err.message || "Failed to fetch machine orders"
     } finally {
       isLoading.value = false
     }
@@ -52,7 +60,6 @@ export const useMachineOrdersStore = defineStore("machineOrders", () => {
       const response = await machineOrdersAPI.create(data)
 
       if (response.data.success) {
-        // Add to list if successful
         if (response.data.data?.machine_order) {
           machineOrders.value.push(response.data.data.machine_order)
         }
@@ -78,13 +85,11 @@ export const useMachineOrdersStore = defineStore("machineOrders", () => {
       const response = await machineOrdersAPI.updateStatus(id, data)
 
       if (response.data.success) {
-        // Update in list
         const index = machineOrders.value.findIndex((order) => order.id === id)
         if (index !== -1) {
           machineOrders.value[index] = { ...machineOrders.value[index], ...response.data.data.machine_order }
         }
 
-        // Update current if it's the same
         if (currentMachineOrder.value?.id === id) {
           currentMachineOrder.value = { ...currentMachineOrder.value, ...response.data.data.machine_order }
         }
@@ -106,13 +111,11 @@ export const useMachineOrdersStore = defineStore("machineOrders", () => {
       const response = await machineOrdersAPI.assignTemplate(id, templateId)
 
       if (response.data.success) {
-        // Update in list
         const index = machineOrders.value.findIndex((order) => order.id === id)
         if (index !== -1) {
           machineOrders.value[index] = { ...machineOrders.value[index], ...response.data.data.machine_order }
         }
 
-        // Update current if it's the same
         if (currentMachineOrder.value?.id === id) {
           currentMachineOrder.value = { ...currentMachineOrder.value, ...response.data.data.machine_order }
         }

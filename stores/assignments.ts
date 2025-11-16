@@ -11,6 +11,8 @@ export interface Assignment {
   number_of_items: number
   scheduled_time?: string
   notes?: string
+  machines?: any[]
+  machine_orders?: any[]
   order?: {
     id: number
     order_number?: string
@@ -38,6 +40,7 @@ export const useAssignmentsStore = defineStore("assignments", () => {
   const assignments = ref<Assignment[]>([])
   const currentAssignment = ref<Assignment | null>(null)
   const routeMessages = ref<RouteMessage[]>([])
+  const trackingTimes = ref<any[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
@@ -71,7 +74,9 @@ export const useAssignmentsStore = defineStore("assignments", () => {
 
       const response = await api.get("/route-assignments", { params })
       if (response.data.success) {
-        assignments.value = response.data.data || []
+        assignments.value = response.data.data || response.data.assignments || []
+        routeMessages.value = response.data.messages || []
+        trackingTimes.value = response.data.tracking_times || []
 
         await saveOfflineData(cacheKey, assignments.value)
       } else {
@@ -97,7 +102,6 @@ export const useAssignmentsStore = defineStore("assignments", () => {
     console.log("[v0] fetchAssignmentById called for ID:", id, "forceRefresh:", forceRefresh)
 
     if (!forceRefresh) {
-      // First check in-memory assignments
       const cachedAssignment = assignments.value.find((a) => a.id === id)
       if (cachedAssignment) {
         currentAssignment.value = cachedAssignment
@@ -105,7 +109,6 @@ export const useAssignmentsStore = defineStore("assignments", () => {
         return cachedAssignment
       }
 
-      // Check all downloaded route plans
       try {
         const allKeys = await getAllOfflineKeys()
         for (const key of allKeys) {
@@ -125,7 +128,6 @@ export const useAssignmentsStore = defineStore("assignments", () => {
         console.error("[v0] Error checking route plans:", error)
       }
 
-      // Check general assignments cache
       const cachedAssignments = await getOfflineData("assignments")
       if (cachedAssignments) {
         const foundAssignment = cachedAssignments.find((a: Assignment) => a.id === id)
@@ -137,7 +139,6 @@ export const useAssignmentsStore = defineStore("assignments", () => {
       }
     }
 
-    // If not in cache or offline, try API
     if (!isOnline.value) {
       console.error("[v0] Assignment not found in offline cache and device is offline")
       error.value = "Assignment not found in offline cache"
@@ -171,26 +172,7 @@ export const useAssignmentsStore = defineStore("assignments", () => {
   }
 
   const fetchRouteMessages = async (fromDate?: string, toDate?: string) => {
-    try {
-      const params: any = {}
-
-      if (fromDate && toDate) {
-        params.from_date = fromDate
-        params.to_date = toDate
-      } else if (fromDate) {
-        params.date = fromDate
-      }
-
-      const response = await api.get("/route-messages", { params })
-      if (response.data.success) {
-        routeMessages.value = response.data.data || []
-      } else {
-        routeMessages.value = []
-      }
-    } catch (err: any) {
-      console.error("Failed to fetch route messages:", err)
-      routeMessages.value = []
-    }
+    console.log("[v0] fetchRouteMessages: Messages are loaded via fetchAssignments")
   }
 
   const downloadRoutePlan = async (fromDate: string, toDate: string) => {
@@ -200,16 +182,14 @@ export const useAssignmentsStore = defineStore("assignments", () => {
         to_date: toDate,
       }
 
-      const [assignmentsResponse, messagesResponse] = await Promise.all([
-        api.get("/route-assignments", { params }),
-        api.get("/route-messages", { params }),
-      ])
+      const response = await api.get("/route-assignments", { params })
 
       const routePlan = {
         fromDate,
         toDate,
-        assignments: assignmentsResponse.data.success ? assignmentsResponse.data.data : [],
-        messages: messagesResponse.data.success ? messagesResponse.data.data : [],
+        assignments: response.data.success ? (response.data.data || response.data.assignments || []) : [],
+        messages: response.data.success ? (response.data.messages || []) : [],
+        trackingTimes: response.data.success ? (response.data.tracking_times || []) : [],
         downloadedAt: Date.now(),
       }
 
@@ -237,6 +217,7 @@ export const useAssignmentsStore = defineStore("assignments", () => {
       if (routePlan) {
         assignments.value = routePlan.assignments
         routeMessages.value = routePlan.messages
+        trackingTimes.value = routePlan.trackingTimes || []
         console.log("[v0] Loaded route plan from offline storage")
         return { success: true, data: routePlan }
       }
@@ -255,14 +236,12 @@ export const useAssignmentsStore = defineStore("assignments", () => {
       })
 
       if (response.data.success) {
-        // Update current assignment if it's the same one
         if (currentAssignment.value && currentAssignment.value.id === id) {
           if (currentAssignment.value.order) {
             currentAssignment.value.order.finished = finished
           }
         }
 
-        // Update in assignments list
         const assignment = assignments.value.find((a) => a.id === id)
         if (assignment && assignment.order) {
           assignment.order.finished = finished
@@ -293,6 +272,7 @@ export const useAssignmentsStore = defineStore("assignments", () => {
     assignments,
     currentAssignment,
     routeMessages,
+    trackingTimes,
     isLoading,
     error,
     fetchAssignments,

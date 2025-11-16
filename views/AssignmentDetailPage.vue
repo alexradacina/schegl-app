@@ -337,7 +337,6 @@ const getOrderAddressId = () => assignment.value?.order_address_id || assignment
 
 const openMachineOrderModal = async (machine: any) => {
   const orderAddressId = getOrderAddressId()
-  await machineOrdersStore.fetchMachineOrders()
 
   const existingOrder = machineOrdersStore.machineOrders.find(
       o => o.machine?.id === machine.id && o.order_address_id === orderAddressId
@@ -353,7 +352,6 @@ const openMachineOrderModal = async (machine: any) => {
     const orderResult = await machineOrdersStore.createMachineOrder(machineOrderData)
 
     if (orderResult.success) {
-      await machineOrdersStore.fetchMachineOrders()
     } else {
       const toast = await toastController.create({
         message: orderResult.message || 'Failed to create machine order',
@@ -419,7 +417,6 @@ const openCreateMachineModal = async () => {
     }
 
     await machinesStore.fetchMachines()
-    await machineOrdersStore.fetchMachineOrders()
 
     selectedMachine.value = result.data
     showMachineOrderModal.value = true
@@ -488,11 +485,9 @@ const onMachineCreated = async () => {
 const onMachineOrderCreated = async () => {
   showMachineOrderModal.value = false
   selectedMachine.value = null
-  await machineOrdersStore.fetchMachineOrders()
 }
 
 const onMachineOrderUpdated = async () => {
-  await machineOrdersStore.fetchMachineOrders()
 }
 
 const formatTime = (timestamp: string | undefined) => {

@@ -1,6 +1,7 @@
 import { defineStore } from "pinia"
 import { ref } from "vue"
 import { trackingTimesAPI } from "@/services/api"
+import { useAssignmentsStore } from "./assignments"
 
 export interface TrackingTime {
   id?: number
@@ -27,17 +28,13 @@ export const useTrackingTimesStore = defineStore("trackingTimes", () => {
     error.value = null
 
     try {
-      const params = date ? { date } : {}
-      const response = await trackingTimesAPI.getAll(params)
+      const assignmentsStore = useAssignmentsStore()
 
-      if (response.data.success) {
-        trackingTimes.value = response.data.data.tracking_times || []
+      trackingTimes.value = assignmentsStore.trackingTimes || []
 
-        // Find current tracking (one without end_date)
-        currentTracking.value = trackingTimes.value.find((t) => !t.end_date) || null
-      }
+      currentTracking.value = trackingTimes.value.find((t) => !t.end_date) || null
     } catch (err: any) {
-      error.value = err.response?.data?.message || "Failed to fetch tracking times"
+      error.value = err.message || "Failed to fetch tracking times"
       console.error("Error fetching tracking times:", err)
     } finally {
       isLoading.value = false

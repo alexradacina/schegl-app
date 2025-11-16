@@ -1,8 +1,9 @@
 import { defineStore } from "pinia"
-import { ref } from "vue"
+import { ref, computed } from "vue"
 import api from "@/services/api"
 import { useOfflineStorage } from "@/composables/useOfflineStorage"
 import { useNetworkStatus } from "@/composables/useNetworkStatus"
+import { useAssignmentsStore } from "./assignments"
 
 export const useMachinesStore = defineStore("machines", () => {
   const machines = ref<any[]>([])
@@ -13,7 +14,8 @@ export const useMachinesStore = defineStore("machines", () => {
   const { isOnline } = useNetworkStatus()
 
   const fetchMachines = async (useCache = false) => {
-    // Get offline machines first
+    const assignmentsStore = useAssignmentsStore()
+
     const cachedMachines = await getOfflineData("machines")
     const offlineMachines = cachedMachines ? cachedMachines.filter((m: any) => m._offline && !m._synced) : []
 
@@ -29,27 +31,23 @@ export const useMachinesStore = defineStore("machines", () => {
     error.value = null
 
     try {
-      const response = await api.get("/machines")
-      console.log("Machines API response:", response.data)
+      const allMachines: any[] = []
 
-      if (response.data.success) {
-        // Handle both possible response structures
-        const machinesData = response.data.data?.machines || response.data.data || []
-        const apiMachines = Array.isArray(machinesData) ? machinesData : []
+      assignmentsStore.assignments.forEach((assignment: any) => {
+        if (assignment.machines && Array.isArray(assignment.machines)) {
+          allMachines.push(...assignment.machines)
+        }
+      })
 
-        // Merge API machines with offline machines
-        machines.value = [...apiMachines, ...offlineMachines]
+      const uniqueMachines = Array.from(new Map(allMachines.map(m => [m.id, m])).values())
+      machines.value = [...uniqueMachines, ...offlineMachines]
 
-        await saveOfflineData("machines", machines.value)
+      await saveOfflineData("machines", machines.value)
 
-        console.log("Machines loaded:", machines.value)
-      } else {
-        error.value = response.data.message || "Failed to fetch machines"
-        machines.value = offlineMachines
-      }
+      console.log("[v0] Machines loaded from assignments:", machines.value.length)
     } catch (err: any) {
       console.error("Error fetching machines:", err)
-      error.value = err.response?.data?.message || err.message || "Failed to fetch machines"
+      error.value = err.message || "Failed to fetch machines"
 
       if (cachedMachines) {
         machines.value = cachedMachines
@@ -75,7 +73,6 @@ export const useMachinesStore = defineStore("machines", () => {
           _synced: false,
         }
 
-        // Add to offline queue
         await addToOfflineQueue({
           id: offlineId,
           type: "machine",
@@ -85,7 +82,6 @@ export const useMachinesStore = defineStore("machines", () => {
           action: "create",
         })
 
-        // Add to local list
         if (!Array.isArray(machines.value)) {
           machines.value = []
         }
@@ -101,12 +97,10 @@ export const useMachinesStore = defineStore("machines", () => {
       console.log("Create machine response:", response.data)
 
       if (response.data.success) {
-        // Ensure machines is an array before pushing
         if (!Array.isArray(machines.value)) {
           machines.value = []
         }
 
-        // Add the new machine to the list - handle both possible response structures
         const newMachine = response.data.data?.machine || response.data.data
         if (newMachine) {
           machines.value.push(newMachine)
