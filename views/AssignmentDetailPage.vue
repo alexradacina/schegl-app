@@ -13,10 +13,10 @@
         <ion-buttons slot="end" style="margin-right: 100px;">
           <ion-button @click="toggleReadyStatus" :disabled="isUpdatingStatus">
             <ion-icon
-                :icon="assignment?.order?.finished === 1 ? closeCircleOutline : checkmarkCircleOutline"
+                :icon="assignment?.order?.finished == 1 ? closeCircleOutline : checkmarkCircleOutline"
                 slot="start"
             ></ion-icon>
-            {{ assignment?.order?.finished === 1 ? 'Mark as Incomplete' : 'Mark as Ready' }}
+            {{ assignment?.order?.finished == 1 ? 'Mark as Incomplete' : 'Mark as Ready' }}
           </ion-button>
         </ion-buttons>
       </ion-toolbar>
@@ -601,7 +601,7 @@ const toggleReadyStatus = async () => {
   if (!assignment.value || isUpdatingStatus.value) return
 
   isUpdatingStatus.value = true
-  const newFinishedValue = assignment.value.order?.finished === 1 ? 0 : 1
+  const newFinishedValue = assignment.value.order?.finished == 1 ? 0 : 1
 
   const result = await assignmentsStore.updateAssignmentStatus(assignment.value.id, newFinishedValue)
 

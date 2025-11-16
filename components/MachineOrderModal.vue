@@ -44,7 +44,7 @@
             </div>
             <div class="detail-row" v-show="existingOrder?.date">
               <ion-label>Date:</ion-label>
-              <span>{{ formatDate(existingOrder?.date || '') }}</span>
+              <span>{{ existingOrder?.date || '' }}</span>
             </div>
           </ion-card-content>
         </ion-card>
@@ -297,26 +297,13 @@ const formResponses = ref({})
 const isFinished = ref(false)
 const lastInspectionIssues = ref<any[]>([])
 
+const showLastInspectionIssues = computed(() => {
+  return props.machine?.lastOrder && props.machine.lastOrder.order_id !== props.orderId
+})
+
 const availableTemplates = computed(() => {
   return templatesStore.templates?.filter(t => t.is_active !== false) || []
 })
-
-const getStatusColor = (status: number) => {
-  switch (status) {
-    case 1: return 'success'
-    case 2: return 'warning'
-    case 3: return 'danger'
-    case 4: return 'dark'
-    default: return 'medium'
-  }
-}
-
-const getStatusLabel = (status: number) => {
-  const labels: Record<number, string> = { 0:'To Do',1:'No Issues',2:'Remark',3:'Severe Issue',4:'Retired' }
-  return labels[status] || 'Unknown'
-}
-
-const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString()
 
 const notesDrawingId = computed(() => {
   if (!props.orderAddressId || !props.machine?.id) return ''
@@ -564,10 +551,6 @@ const getMachineStatusLabel = (status: string) => {
       return 'New'
   }
 }
-
-const showLastInspectionIssues = computed(() => {
-  return props.machine?.lastOrder && props.machine.lastOrder.order_id !== props.orderId
-})
 
 const getIssueClass = (issue: any) => {
   if (issue.resolved) return 'issue-resolved'
