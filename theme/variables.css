@@ -59,6 +59,14 @@ http://ionicframework.com/docs/theming/ */
   --ion-color-dark-shade: #1e2023;
   --ion-color-dark-tint: #383a3e;
 
+  /** dark **/
+  --ion-color-dark-gray: #595959;
+  --ion-color-dark-gray-rgb: 34, 36, 40;
+  --ion-color-dark-gray-contrast: #ffffff;
+  --ion-color-darkv-contrast-rgb: 255, 255, 255;
+  --ion-color-dark-gray-shade: #1e2023;
+  --ion-color-dark-gray-tint: #383a3e;
+
   /** medium **/
   --ion-color-medium: #92949c;
   --ion-color-medium-rgb: 146, 148, 156;
@@ -68,7 +76,7 @@ http://ionicframework.com/docs/theming/ */
   --ion-color-medium-tint: #9d9fa6;
 
   /** light **/
-  --ion-color-light: #f4f5f8;
+  --ion-color-light: #f7f7f7;
   --ion-color-light-rgb: 244, 245, 248;
   --ion-color-light-contrast: #000000;
   --ion-color-light-contrast-rgb: 0, 0, 0;
@@ -305,4 +313,8 @@ ion-modal {
 
 .map-container, .map {
   background: transparent;
+}
+
+ion-button {
+  --border-radius: 9999px !important;
 }

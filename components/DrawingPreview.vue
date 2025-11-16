@@ -1,21 +1,26 @@
 <template>
   <div class="drawing-preview-container">
-    <h3 v-if="title" class="drawing-title">{{ title }}</h3>
-
-    <div v-if="drawingPreviewUrl" class="drawing-preview" @click.stop.prevent="openDrawingModal">
-      <img :src="drawingPreviewUrl" alt="Drawing preview" />
-      <div class="preview-overlay">
-        <ion-icon :icon="createOutline" size="large"></ion-icon>
-        <p>Click to edit</p>
+    <div class="notes-layout">
+      <!-- Edit Icon -->
+      <div class="edit-icon" @click.stop.prevent="openDrawingModal">
+        <ion-icon :icon="create"></ion-icon>
       </div>
-    </div>
-    <div v-else class="drawing-placeholder" @click.stop.prevent="openDrawingModal">
-      <ion-icon :icon="brushOutline" size="large" color="medium"></ion-icon>
-      <p>No {{ title ? title.toLowerCase() : 'drawing' }} yet</p>
-      <ion-button fill="outline" size="small" @click.stop.prevent="openDrawingModal">
-        <ion-icon :icon="addOutline" slot="start"></ion-icon>
-        Create {{ title || 'Drawing' }}
-      </ion-button>
+
+      <!-- Preview or Grid Background with Button Overlay -->
+      <div class="preview-wrapper" @click.stop.prevent="openDrawingModal">
+        <!-- Grid background always visible -->
+        <div class="grid-background-full">
+          <!-- Grid background always visible -->
+        </div>
+        <div v-if="drawingPreviewUrl" class="drawing-preview-full">
+          <img :src="drawingPreviewUrl" alt="Drawing preview" />
+        </div>
+
+        <!-- Dynamic button label based on machineOrderId, resultType, and preview existence -->
+        <ion-button fill="outline" size="small" class="add-note-btn" @click.stop.prevent="openDrawingModal">
+          {{ buttonLabel }}
+        </ion-button>
+      </div>
     </div>
 
     <!-- Set display: none to completely remove canvas from layout -->
@@ -35,9 +40,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import { IonIcon, IonButton } from '@ionic/vue'
-import { brushOutline, addOutline, createOutline } from 'ionicons/icons'
+import { brushOutline, addOutline, createOutline, create } from 'ionicons/icons'
 import DrawingModal from '@/components/DrawingModal.vue'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
 import { Capacitor } from '@capacitor/core'
@@ -57,6 +62,24 @@ const props = defineProps<Props>()
 const drawingPreviewUrl = ref('')
 const previewCanvas = ref<HTMLCanvasElement | null>(null)
 const showDrawingModal = ref(false)
+
+const buttonLabel = computed(() => {
+  const hasPreview = !!drawingPreviewUrl.value
+  const action = hasPreview ? 'Edit' : 'Add'
+
+  // If machineOrderId is not set, null, or 0 - general note
+  if (!props.machineOrderId || props.machineOrderId === 0) {
+    return `${action} general note`
+  }
+
+  // If machineOrderId is set, check resultType
+  if (props.resultType === 'template') {
+    return `${action} template`
+  }
+
+  // Default to 'notes' or if resultType is 'notes'
+  return `${action} note`
+})
 
 const openDrawingModal = (event?: Event) => {
   if (event) {
@@ -129,8 +152,8 @@ const loadDrawingPreview = async () => {
     }
 
     const canvasEl = previewCanvas.value
-    const previewWidth = 400
-    const previewHeight = 150
+    const previewWidth = 800 // Higher resolution for better quality
+    const previewHeight = 180 // Maintain 90px display height but 2x for quality
 
     canvasEl.width = previewWidth
     canvasEl.height = previewHeight
@@ -172,10 +195,9 @@ const loadDrawingPreview = async () => {
     const contentHeight = maxY - minY
 
     if (contentWidth > 0 && contentHeight > 0) {
-      const padding = 20
-      const scaleX = (previewWidth - padding * 2) / contentWidth
-      const scaleY = (previewHeight - padding * 2) / contentHeight
-      const scale = Math.min(scaleX, scaleY, 1)
+      const scaleX = previewWidth / contentWidth
+      const scaleY = previewHeight / contentHeight
+      const scale = Math.max(scaleX, scaleY) // Use max instead of min to fill/crop
 
       const scaledWidth = contentWidth * scale
       const scaledHeight = contentHeight * scale
@@ -208,82 +230,82 @@ watch(() => props.drawingId, async () => {
   width: 100%;
 }
 
-.drawing-title {
-  margin: 0 0 1rem 0;
-  color: var(--ion-color-primary);
-  font-size: 1.1rem;
-  font-weight: 600;
+.notes-layout {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
 }
 
-.drawing-preview {
+.edit-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: #000;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.edit-icon:hover {
+  color: #4a9eff;
+}
+
+.preview-wrapper {
   position: relative;
-  width: 100%;
-  max-height: 200px;
-  border: 2px solid var(--ion-color-primary);
-  border-radius: 8px;
+  flex: 1;
+  height: 90px; /* Increased height from 60px to 90px (1.5x more) */
   cursor: pointer;
-  overflow: hidden;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--ion-color-light);
 }
 
-.drawing-preview img {
-  width: 100%;
-  height: auto;
-  max-height: 200px;
-  object-fit: contain;
-  display: block;
-}
-
-.drawing-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 150px;
-  border: 2px dashed var(--ion-color-medium);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 1.5rem;
-  text-align: center;
-}
-
-.drawing-placeholder:hover {
-  border-color: var(--ion-color-primary);
-  background-color: var(--ion-color-light);
-}
-
-.drawing-placeholder p {
-  margin: 1rem 0;
-  color: var(--ion-color-medium);
-}
-
-.preview-overlay {
+/* Grid background always visible */
+.grid-background-full {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  color: white;
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background-image:
+      linear-gradient(#e0f0ff 1px, transparent 1px),
+      linear-gradient(90deg, #e0f0ff 1px, transparent 1px);
+  background-size: 10px 10px;
+  background-color: #ffffff;
+  z-index: 1;
 }
 
-.drawing-preview:hover .preview-overlay {
-  opacity: 1;
+/* Image appears on top of grid */
+.drawing-preview-full {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: transparent;
+  z-index: 2;
 }
 
-.preview-overlay p {
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
+/* Image appears on top of grid */
+.drawing-preview-full img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.add-note-btn {
+  --padding-start: 1rem;
+  --padding-end: 1rem;
+  height: 32px;
+  font-size: 0.85rem;
+  text-transform: none;
+  position: relative;
+  z-index: 10;
 }
 </style>

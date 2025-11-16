@@ -102,4 +102,15 @@ export const orderResultsAPI = {
     delete: (id: number) => api.delete(`/order-results/${id}`),
 }
 
+// Tracking Times API endpoints
+export const trackingTimesAPI = {
+    getAll: (params?: any) => api.get("/tracking-times", { params }),
+    getById: (id: number) => api.get(`/tracking-times/${id}`),
+    create: (data: any) => api.post("/tracking-times", data),
+    update: (id: number, data: any) => api.put(`/tracking-times/${id}`, data),
+    delete: (id: number) => api.delete(`/tracking-times/${id}`),
+    getStatistics: (params?: any) => api.get("/tracking-times/statistics", { params }),
+}
+
+
 export default api

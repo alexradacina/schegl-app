@@ -34,8 +34,8 @@
           <ion-card-content>
             <div class="detail-row">
               <ion-label>Status:</ion-label>
-              <ion-chip :color="getStatusColor(existingOrder?.status || 0)">
-                {{ getStatusLabel(existingOrder?.status || 0) }}
+              <ion-chip :color="getMachineStatusColor(machine.status)">
+                {{ getMachineStatusLabel(machine.status) }}
               </ion-chip>
             </div>
             <div class="detail-row" v-show="existingOrder?.template">
@@ -57,7 +57,7 @@
           <ion-card-content>
             <DrawingPreview
                 :drawing-id="notesDrawingId"
-                :order-id="props.orderAddressId"
+                :order-id="props.orderId"
                 :machine-order-id="existingOrder?.id"
                 result-type="notes"
             />
@@ -100,7 +100,7 @@
                   :drawing-id="templateDrawingId"
                   :initial-image-url="selectedTemplateImageUrl"
                   :key="templateDrawingId"
-                  :order-id="props.orderAddressId"
+                  :order-id="props.orderId"
                   :machine-order-id="existingOrder?.id"
                   result-type="template"
               />
@@ -109,7 +109,7 @@
         </ion-card>
 
         <!-- Template Form -->
-        <ion-card v-show="existingOrder?.template?.form_sections?.length">
+        <ion-card v-show="existingOrder?.template?.form_sections?.length && 0==1">
           <ion-card-header>
             <ion-card-title>{{ existingOrder?.template?.form_title || 'Template Form' }}</ion-card-title>
           </ion-card-header>
@@ -248,7 +248,8 @@ import DrawingPreview from '@/components/DrawingPreview.vue'
 interface Props {
   isOpen: boolean
   machine: any
-  orderAddressId: number
+  orderAddressId: number,
+  orderId:number,
 }
 
 const props = defineProps<Props>()
@@ -471,6 +472,40 @@ watch(() => props.isOpen, async (isOpen) => {
 onMounted(async () => {
   await templatesStore.fetchTemplates()
 })
+
+const getMachineStatusColor = (status: string) => {
+  switch (status) {
+    case 'new':
+      return 'medium'
+    case 'no_issues':
+      return 'success'
+    case 'issues':
+      return 'warning'
+    case 'severe_issues':
+      return 'danger'
+    case 'retired':
+      return 'dark'
+    default:
+      return 'medium'
+  }
+}
+
+const getMachineStatusLabel = (status: string) => {
+  switch (status) {
+    case 'new':
+      return 'New'
+    case 'no_issues':
+      return 'No Issues'
+    case 'issues':
+      return 'Issues'
+    case 'severe_issues':
+      return 'Severe Issues'
+    case 'retired':
+      return 'Retired'
+    default:
+      return 'New'
+  }
+}
 </script>
 
 <style scoped>

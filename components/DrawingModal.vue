@@ -3,10 +3,9 @@
     <ion-page>
       <ion-header>
         <ion-toolbar class="drawing-toolbar">
-          <!-- Made toolbar responsive: two rows on screens < 1200px -->
-          <div class="toolbar-content" :class="{ 'toolbar-wrap': true }">
-            <div class="toolbar-row">
-              <!-- Tool selection with simpler icons -->
+          <div class="toolbar-content">
+            <!-- First row: tools, colors, and sizes -->
+            <div class="toolbar-row toolbar-row-top">
               <div class="tool-section">
                 <button
                     class="tool-btn"
@@ -111,6 +110,11 @@
 
               <div class="spacer"></div>
 
+
+            </div>
+
+            <!-- Second row: action buttons (undo, redo, clear, download, close) -->
+            <div class="toolbar-row toolbar-row-actions">
               <!-- Made canvas size editable with input fields -->
               <div class="size-info">
                 <input
@@ -133,11 +137,6 @@
                   <ion-icon :icon="expandOutline"></ion-icon>
                 </button>
               </div>
-            </div>
-
-            <!-- Added second row for action buttons on small screens -->
-            <div class="toolbar-row toolbar-row-actions">
-              <!-- Made action buttons bigger to match left tool icons -->
               <div class="action-section">
                 <button class="action-btn" @click="undo" :disabled="!canUndo" title="Undo">
                   <ion-icon :icon="arrowUndoOutline"></ion-icon>
@@ -281,7 +280,6 @@ console.log('[v0] Platform detection - isNative:', isNative, 'platform:', Capaci
 const currentTool = ref('pencil');
 const canvasEl = ref(null);
 const contentRef = ref(null);
-const colorInputRef = ref(null);
 let canvas = null;
 let drawingModeInitialized = false;
 
@@ -1253,6 +1251,8 @@ const scrollThumbTop = ref(0);
 const isDraggingScroll = ref(false);
 const dragStartY = ref(0);
 const scrollStartY = ref(0);
+
+const colorInputRef = ref(null); // Declared colorInputRef
 </script>
 
 <style scoped>
@@ -1264,7 +1264,7 @@ const scrollStartY = ref(0);
 
 .drawing-toolbar {
   --background: #f8f9fa;
-  --min-height: 60px;
+  --min-height: 100px;
   --padding-top: 8px;
   --padding-bottom: 8px;
 }
@@ -1276,47 +1276,16 @@ const scrollStartY = ref(0);
   padding: 0 16px;
 }
 
-/* Added responsive layout: single row on large screens, two rows on small */
 .toolbar-row {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
+/* Align second toolbar row items to the right */
 .toolbar-row-actions {
-  display: none;
-}
-
-/* On screens larger than 1200px, show in single row */
-@media (min-width: 1200px) {
-  .toolbar-content {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .toolbar-row-actions {
-    display: flex;
-  }
-
-  .toolbar-row .action-section {
-    display: none;
-  }
-}
-
-/* On screens smaller than 1200px, show in two rows */
-@media (max-width: 1199px) {
-  .toolbar-content {
-    flex-direction: column;
-  }
-
-  .toolbar-row-actions {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .toolbar-row .action-section {
-    display: none;
-  }
+  display: flex;
+  justify-content: flex-end;
 }
 
 .tool-section {
@@ -1497,7 +1466,7 @@ const scrollStartY = ref(0);
 }
 
 .size-input {
-  width: 60px;
+  width: 65px;
   height: 32px;
   border: 1px solid #dee2e6;
   border-radius: 6px;

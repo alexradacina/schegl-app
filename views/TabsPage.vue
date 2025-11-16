@@ -1,48 +1,70 @@
 <template>
   <ion-page>
     <ion-tabs>
-      <ion-router-outlet />
-
+      <!-- Restored slot to bottom, removed fixed positioning that was causing issues -->
       <ion-tab-bar slot="bottom" class="custom-tab-bar">
-        <!-- Added sync button and improved status display -->
-        <div class="network-status" :class="{ offline: !isOnline, syncing: isSyncing }">
-          <ion-icon :icon="wifiOutline" />
-          <span>{{ isOnline ? 'Online' : 'Offline' }}</span>
-          <ion-badge v-if="pendingSync > 0" color="warning">{{ pendingSync }}</ion-badge>
-          <ion-spinner v-if="isSyncing" name="crescent" class="sync-spinner"></ion-spinner>
-          <ion-button
-              v-if="pendingSync > 0"
-              size="small"
-              fill="clear"
-              @click="handleManualSync"
-              class="sync-button"
-          >
-            Sync
-          </ion-button>
-        </div>
-
-        <ion-tab-button tab="assignments" href="/tabs/assignments">
-          <ion-icon :icon="listOutline" />
-          <ion-label>Assignments</ion-label>
+        <ion-tab-button
+            tab="assignments"
+            href="/tabs/assignments"
+            :disabled="showTimeTracking"
+        >
+          <ion-icon :icon="map" />
+          <ion-label>Tour</ion-label>
         </ion-tab-button>
 
-        <ion-tab-button tab="profile" href="/tabs/profile">
-          <ion-icon :icon="personOutline" />
+        <ion-tab-button
+            tab="profile"
+            href="/tabs/profile"
+            :disabled="showTimeTracking"
+        >
+          <ion-icon :icon="person" />
           <ion-label>Profile</ion-label>
         </ion-tab-button>
 
+        <ion-tab-button
+            type="button"
+            @click.prevent.stop="openTimeTracking"
+        >
+          <ion-icon :icon="time" />
+          <ion-label>Time</ion-label>
+        </ion-tab-button>
 
+        <div class="tab-logo">
+          <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo_schlegl-0A1BLRnkLqnrs3o43uHT7O32eanI6R.png" alt="Schlegl Logo" />
+        </div>
       </ion-tab-bar>
+
+      <ion-router-outlet />
     </ion-tabs>
 
-    <!-- Added toast for sync feedback -->
+    <TimeTrackingModal
+        :is-open="showTimeTracking"
+        @close="showTimeTracking = false"
+    />
+
     <ion-toast
         :is-open="showToast"
         :message="toastMessage"
         :duration="3000"
         :color="toastColor"
         @didDismiss="showToast = false"
-    ></ion-toast>
+    />
+
+    <div class="network-status" :class="{ offline: !isOnline, syncing: isSyncing }">
+      <ion-icon :icon="wifiOutline" />
+      <span>{{ isOnline ? 'Online' : 'Offline' }}</span>
+      <ion-badge v-if="pendingSync > 0" color="warning">{{ pendingSync }}</ion-badge>
+      <ion-spinner v-if="isSyncing" name="crescent" class="sync-spinner"></ion-spinner>
+      <ion-button
+          v-if="pendingSync > 0"
+          size="small"
+          fill="clear"
+          @click="handleManualSync"
+          class="sync-button"
+      >
+        Sync
+      </ion-button>
+    </div>
   </ion-page>
 </template>
 
@@ -60,13 +82,14 @@ import {
   IonSpinner,
   IonToast,
 } from '@ionic/vue'
-import { listOutline, personOutline, wifiOutline } from 'ionicons/icons'
+import { map, person, time, wifiOutline } from 'ionicons/icons'
 import { useNetworkStatus } from '@/composables/useNetworkStatus'
 import { useOfflineStorage } from '@/composables/useOfflineStorage'
 import { useOfflineSync } from '@/composables/useOfflineSync'
 import { useMachinesStore } from '@/stores/machines'
 import { useAssignmentsStore } from '@/stores/assignments'
 import { ref, onMounted } from 'vue'
+import TimeTrackingModal from '@/components/TimeTrackingModal.vue'
 
 const { isOnline, onOnline } = useNetworkStatus()
 const { getOfflineQueue } = useOfflineStorage()
@@ -75,6 +98,7 @@ const machinesStore = useMachinesStore()
 const assignmentsStore = useAssignmentsStore()
 
 const pendingSync = ref(0)
+const showTimeTracking = ref(false)
 const showToast = ref(false)
 const toastMessage = ref('')
 const toastColor = ref('success')
@@ -113,7 +137,6 @@ const handleManualSync = async () => {
     toastColor.value = 'success'
 
     console.log('[v0] Refreshing data from server...')
-    // Refresh data from server after successful sync
     try {
       await Promise.all([
         machinesStore.fetchMachines(),
@@ -136,7 +159,11 @@ const handleManualSync = async () => {
   await updatePendingCount()
 }
 
-onOnline(async () => {
+const openTimeTracking = () => {
+  showTimeTracking.value = true
+}
+
+const autoSync = async () => {
   console.log('[v0] Network stable after delay, checking for pending items')
   await updatePendingCount()
 
@@ -175,7 +202,7 @@ onOnline(async () => {
 
     await updatePendingCount()
   }
-})
+}
 
 onMounted(() => {
   console.log('[v0] TabsPage mounted')
@@ -183,12 +210,104 @@ onMounted(() => {
   // Update pending count every 30 seconds
   setInterval(updatePendingCount, 30000)
 })
+
+// Ensure all hooks are called at the top level
+onOnline(autoSync)
 </script>
 
 <style scoped>
+/* Removed fixed positioning, using Ionic's default bottom positioning */
 .custom-tab-bar {
-  padding-bottom: 25px;
+  padding: 0;
+  background: #f8f8f8;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  height: 70px;
+  /* Ensure tab bar stays fixed at bottom without causing layout shifts */
+  position: sticky;
+  bottom: 0;
+  z-index: 1000;
+}
+
+.custom-tab-bar ion-tab-button {
+  --background: transparent;
+  --background-focused: transparent;
+  --color: #333;
+  --color-selected: #333;
+  --ripple-color: transparent;
+  flex: 0 0 auto;
+  min-width: 130px;
+  max-width: 130px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   position: relative;
+  flex-shrink: 0;
+}
+
+.custom-tab-bar ion-tab-button:first-child {
+  margin-left: 16px;
+}
+
+.custom-tab-bar ion-tab-button.tab-selected::before,
+.custom-tab-bar ion-tab-button:not(.force-inactive):hover::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 115px;
+  height: 54px;
+  background: #b3e5f0;
+  border-radius: 8px;
+  z-index: 0;
+  transition: background 0.2s ease;
+}
+
+.custom-tab-bar ion-tab-button:not(.force-inactive):hover::before {
+  background: #d9f2f7;
+}
+
+.custom-tab-bar ion-tab-button.force-inactive {
+  pointer-events: none;
+  opacity: 1;
+}
+
+.custom-tab-bar ion-icon {
+  font-size: 28px;
+  margin-bottom: 4px;
+  color: #333;
+  position: relative;
+  z-index: 1;
+}
+
+.custom-tab-bar ion-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  position: relative;
+  z-index: 1;
+}
+
+.tab-logo {
+  margin-left: auto;
+  padding-right: 16px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.tab-logo img {
+  height: 45px;
+  width: auto;
+  object-fit: contain;
 }
 
 .network-status {

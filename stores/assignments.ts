@@ -17,6 +17,7 @@ export interface Assignment {
     customer?: {
       name: string
     }
+    finished?: number
   }
   address?: {
     street: string
@@ -247,25 +248,24 @@ export const useAssignmentsStore = defineStore("assignments", () => {
     }
   }
 
-  const updateAssignmentStatus = async (id: number, status: string, notes?: string) => {
+  const updateAssignmentStatus = async (id: number, finished: number) => {
     try {
       const response = await api.patch(`/route-assignments/${id}/status`, {
-        status,
-        notes,
+        finished,
       })
 
       if (response.data.success) {
         // Update current assignment if it's the same one
         if (currentAssignment.value && currentAssignment.value.id === id) {
-          currentAssignment.value.status = status
-          if (notes !== undefined) currentAssignment.value.notes = notes
+          if (currentAssignment.value.order) {
+            currentAssignment.value.order.finished = finished
+          }
         }
 
         // Update in assignments list
         const assignment = assignments.value.find((a) => a.id === id)
-        if (assignment) {
-          assignment.status = status
-          if (notes !== undefined) assignment.notes = notes
+        if (assignment && assignment.order) {
+          assignment.order.finished = finished
         }
 
         return { success: true, message: response.data.message }
