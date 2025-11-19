@@ -11,6 +11,7 @@ export function useNetworkStatus() {
 
   const checkNetworkStatus = async () => {
     try {
+      isOnline.value = false
       const status = await Network.getStatus()
       isOnline.value = status.connected
       connectionType.value = status.connectionType

@@ -263,12 +263,14 @@ import RouteDetailModal from '@/components/RouteDetailModal.vue'
 import TimeTrackingModal from '@/components/TimeTrackingModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTrackingTimesStore } from '@/stores/trackingTimes'
+import { useTemplatesStore } from '@/stores/templates'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const assignmentsStore = useAssignmentsStore()
 const { saveOfflineFile } = useOfflineStorage()
 const trackingStore = useTrackingTimesStore()
+const templatesStore = useTemplatesStore()
 const showToast = ref(false)
 const toastMessage = ref('')
 const dateRangeType = ref('today')
@@ -752,6 +754,7 @@ const openTimeTrackingModal = () => {
 let timeUpdateInterval: any = null
 
 const initialize = () => {
+  templatesStore.fetchTemplates()
   refreshAssignmentsHook()
   setGreeting()
   updateDateRangeFormatted()

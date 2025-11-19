@@ -161,16 +161,17 @@
         </div>
       </div>
 
-      <!-- Floating Add Button -->
-      <ion-fab vertical="bottom" horizontal="start" slot="fixed">
-        <ion-fab-button @click="openCreateMachineModal">
-          <ion-icon class="add-machine" :icon="add"></ion-icon>
-        </ion-fab-button>
-      </ion-fab>
-
       <!-- Modals -->
-      <CreateMachineModal v-show="showCreateMachine" :is-open="showCreateMachine" :address-id="assignment?.address?.id" :customer-id="assignment?.order?.customer?.id" @close="showCreateMachine = false" @created="onMachineCreated"/>
-      <MachineOrderModal v-show="showMachineOrderModal" :is-open="showMachineOrderModal" :machine="selectedMachine" :order-id="assignment?.order?.id" :order-address-id="getOrderAddressId()" @close="showMachineOrderModal = false" @created="onMachineOrderCreated" @updated="onMachineOrderUpdated"/>
+      <MachineOrderModal
+          v-if="showMachineOrderModal"
+          :is-open="showMachineOrderModal"
+          :machine="selectedMachine"
+          :order-id="assignment?.order?.id"
+          :order-address-id="getOrderAddressId()"
+          @close="handleMachineOrderClose"
+          @created="onMachineOrderCreated"
+          @updated="onMachineOrderUpdated"
+      />
 
       <!-- Added TimeTrackingModal -->
       <TimeTrackingModal
@@ -228,19 +229,25 @@
         </ion-content>
       </ion-modal>
     </ion-content>
+
+    <!-- Added floating Add Machine button -->
+    <ion-fab vertical="bottom" horizontal="start" slot="fixed" class="add-fab">
+      <ion-fab-button @click="openAddMachineModal">
+        <ion-icon :icon="add" class="add-machine"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
   </ion-page>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, IonBackButton, IonCard, IonCardHeader, IonCardTitle, IonCardSubtitle, IonCardContent, IonItem, IonLabel, IonSelect, IonSelectOption, IonButton, IonChip, IonSpinner, IonIcon, toastController, IonFab, IonFabButton, IonModal, IonList, IonCheckbox, IonToggle } from '@ionic/vue'
+import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, IonBackButton, IonCard, IonCardHeader, IonCardTitle, IonCardSubtitle, IonCardContent, IonItem, IonLabel, IonSelect, IonSelectOption, IonButton, IonChip, IonSpinner, IonIcon, toastController, IonModal, IonList, IonCheckbox, IonToggle, IonFab, IonFabButton } from '@ionic/vue'
 import { alertCircleOutline, add, constructOutline, chevronForwardOutline, documentTextOutline, searchOutline, gridOutline, listOutline, funnelOutline, location, timeOutline, chatbubble, checkmark, chevronBackOutline, checkmarkCircleOutline, closeCircleOutline } from 'ionicons/icons'
 import { useAssignmentsStore } from '@/stores/assignments'
 import { useMachinesStore } from '@/stores/machines'
 import { useMachineOrdersStore } from '@/stores/machineOrders'
 import { useTrackingTimesStore } from '@/stores/trackingTimes'
-import CreateMachineModal from '@/components/CreateMachineModal.vue'
 import MachineOrderModal from '@/components/MachineOrderModal.vue'
 import DrawingPreview from '@/components/DrawingPreview.vue'
 import TimeTrackingModal from '@/components/TimeTrackingModal.vue'
@@ -367,67 +374,9 @@ const openMachineOrderModal = async (machine: any) => {
   showMachineOrderModal.value = true
 }
 
-const openCreateMachineModal = async () => {
-  if (!assignment.value?.address?.id || !assignment.value?.order?.customer?.id) {
-    const toast = await toastController.create({
-      message: 'Missing address or customer information',
-      duration: 3000,
-      color: 'danger',
-    })
-    await toast.present()
-    return
-  }
-
-  const machineData = {
-    internal_number: 'New Machine',
-    object: '',
-    producer: '',
-    type: '',
-    serial_number: '',
-    address_id: assignment.value.address.id,
-    customer_id: assignment.value.order.customer.id,
-  }
-
-  const result = await machinesStore.createMachine(machineData)
-
-  if (result.success && result.data) {
-    const orderAddressId = getOrderAddressId()
-    const machineOrderData = {
-      machine_id: result.data.id,
-      order_address_id: orderAddressId,
-      status: 0,
-    }
-
-    const orderResult = await machineOrdersStore.createMachineOrder(machineOrderData)
-
-    if (orderResult.success) {
-      const toast = await toastController.create({
-        message: 'Machine and order created successfully',
-        duration: 2000,
-        color: 'success',
-      })
-      await toast.present()
-    } else {
-      const toast = await toastController.create({
-        message: 'Machine created but failed to create order',
-        duration: 3000,
-        color: 'warning',
-      })
-      await toast.present()
-    }
-
-    await machinesStore.fetchMachines()
-
-    selectedMachine.value = result.data
-    showMachineOrderModal.value = true
-  } else {
-    const toast = await toastController.create({
-      message: result.message || 'Failed to create machine',
-      duration: 3000,
-      color: 'danger',
-    })
-    await toast.present()
-  }
+const openAddMachineModal = () => {
+  selectedMachine.value = null
+  showMachineOrderModal.value = true
 }
 
 const getStatusColor = (status: string | number | null | undefined) => {
@@ -475,11 +424,6 @@ const updateStatus = async () => {
 
 const toggleView = () => {
   viewMode.value = viewMode.value === 'list' ? 'grid' : 'list'
-}
-
-const onMachineCreated = async () => {
-  showCreateMachine.value = false
-  await machinesStore.fetchMachines()
 }
 
 const onMachineOrderCreated = async () => {
@@ -619,6 +563,11 @@ const toggleReadyStatus = async () => {
   isUpdatingStatus.value = false
 }
 
+const handleMachineOrderClose = () => {
+  showMachineOrderModal.value = false
+  selectedMachine.value = null
+}
+
 onMounted(async () => {
   const assignmentId = parseInt(route.params.id as string)
   await assignmentsStore.fetchAssignmentById(assignmentId)
@@ -671,7 +620,7 @@ const getMachineStatusLabel = (status: string) => {
     case 'retired':
       return 'Retired'
     default:
-      return status
+      return 'New'
   }
 }
 </script>

@@ -1,10 +1,15 @@
 import { useTrackingTimesStore, type TrackingTime } from "@/stores/trackingTimes"
-import { useOfflineStorage, type OfflineItem } from "@/composables/useOfflineStorage"
+import { useOfflineStorage } from "@/composables/useOfflineStorage"
 import { useNetworkStatus } from "@/composables/useNetworkStatus"
 
 export function useTimeTracking() {
   const trackingStore = useTrackingTimesStore()
-  const { addToOfflineQueue, getOfflineData, saveOfflineData } = useOfflineStorage()
+  const {
+    getOfflineTrackingTimes,
+    addOfflineTrackingTime,
+    updateOfflineTrackingTime,
+    clearOfflineTrackingTimes,
+  } = useOfflineStorage()
   const { isOnline } = useNetworkStatus()
 
   const formatDateTime = (date: Date): string => {
@@ -26,51 +31,51 @@ export function useTimeTracking() {
     }
 
     if (isOnline.value) {
-      return await trackingStore.createTrackingTime(trackingData)
+      const result = await trackingStore.createTrackingTime(trackingData)
+      return result
     } else {
-      // Save offline
-      const offlineItem: OfflineItem = {
-        id: `tracking_${Date.now()}`,
-        type: "create",
-        data: trackingData,
-        timestamp: Date.now(),
+      // Save offline with temporary ID
+      const offlineTracking = {
+        ...trackingData,
+        id: `offline_${Date.now()}`,
+        tracking_time_id: null,
         synced: false,
-        action: "create",
       }
 
-      await addToOfflineQueue(offlineItem)
-      await saveOfflineData("current_tracking", trackingData)
+      await addOfflineTrackingTime(offlineTracking)
 
+      // Add to store immediately for UI update
+      trackingStore.trackingTimes.push(offlineTracking as any)
+      trackingStore.currentTracking = offlineTracking as any
+
+      console.log("[v0] Started tracking offline:", offlineTracking)
+      return { success: true, data: offlineTracking, offline: true }
+    }
+  }
+
+  const stopTracking = async (id: number | string) => {
+    const endDate = formatDateTime(new Date())
+
+    if (isOnline.value && typeof id === 'number') {
+      const result = await trackingStore.updateTrackingTime(id, { end_date: endDate })
+      return result
+    } else {
+      // Update offline tracking
+      await updateOfflineTrackingTime(String(id), { end_date: endDate })
+
+      // Update in store for UI
+      const tracking = trackingStore.trackingTimes.find((t: any) => t.id === id)
+      if (tracking) {
+        tracking.end_date = endDate
+      }
+      trackingStore.currentTracking = null
+
+      console.log("[v0] Stopped tracking offline:", id)
       return { success: true, offline: true }
     }
   }
 
-  const stopTracking = async (id: number) => {
-    const updateData = {
-      end_date: formatDateTime(new Date()),
-    }
-
-    if (isOnline.value) {
-      return await trackingStore.updateTrackingTime(id, updateData)
-    } else {
-      // Save offline
-      const offlineItem: OfflineItem = {
-        id: `tracking_update_${Date.now()}`,
-        type: "update",
-        data: { id, ...updateData },
-        timestamp: Date.now(),
-        synced: false,
-        action: "update",
-      }
-
-      await addToOfflineQueue(offlineItem)
-      await saveOfflineData("current_tracking", null)
-
-      return { success: true, offline: true }
-    }
-  }
-
-  const updateAndRestart = async (currentId: number, newData: Partial<TrackingTime>) => {
+  const updateAndRestart = async (currentId: number | string, newData: Partial<TrackingTime>) => {
     // Stop current tracking
     const stopResult = await stopTracking(currentId)
 
@@ -82,10 +87,52 @@ export function useTimeTracking() {
     return stopResult
   }
 
+  const syncOfflineTrackingTimes = async () => {
+    console.log("[v0] Starting tracking times sync...")
+    const offlineTrackingTimes = await getOfflineTrackingTimes()
+
+    if (offlineTrackingTimes.length === 0) {
+      return { success: true, synced: 0 }
+    }
+
+    const validOfflineItems = offlineTrackingTimes.filter((t: any) => !t.deleted)
+
+    if (validOfflineItems.length === 0) {
+      await clearOfflineTrackingTimes()
+      return { success: true, synced: 0 }
+    }
+
+    // Prepare items for the API
+    const items = validOfflineItems.map((t: any) => ({
+      tracking_time_id: typeof t.id === 'string' ? null : t.id,
+      assignment_id: t.assignment_id,
+      type: t.type,
+      description: t.description,
+      start_date: t.start_date,
+      end_date: t.end_date,
+    }))
+
+    try {
+      const result = await trackingStore.syncMultipleTrackingTimes(items)
+
+      if (result.success) {
+        await clearOfflineTrackingTimes()
+        console.log("[v0] Successfully synced tracking times")
+        return { success: true, synced: items.length }
+      }
+
+      return { success: false, message: "Sync failed" }
+    } catch (error) {
+      console.error("[v0] Error syncing tracking times:", error)
+      return { success: false, error }
+    }
+  }
+
   return {
     startTracking,
     stopTracking,
     updateAndRestart,
+    syncOfflineTrackingTimes,
     formatDateTime,
   }
 }

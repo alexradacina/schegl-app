@@ -241,6 +241,7 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import { useImagePicker } from '@/composables/useImagePicker';
 import { useOrderResults } from '@/composables/useOrderResults';
+import { useTemplatesStore } from '@/stores/templates'
 
 const props = defineProps({
   isOpen: {
@@ -356,6 +357,10 @@ const showColorPopover = ref(false); // Added popover state
 
 const { createOrderResult, updateOrderResult, canvasToBlob } = useOrderResults();
 let existingResultId = ref(null);
+
+const templatesStore = useTemplatesStore()
+
+const cachedImageUrl = ref('')
 
 const handleClose = async () => {
   if (autoSaveInterval.value) {
@@ -553,16 +558,34 @@ const loadDrawing = async () => {
   }
 };
 
+watch(() => props.initialImageUrl, async (newUrl) => {
+  if (newUrl && newUrl.startsWith('http')) {
+    // Try to find this URL in templates and load cached version
+    const template = templatesStore.templates.find(t =>
+        t.image_src === newUrl || t.original_image === newUrl
+    )
+    if (template) {
+      cachedImageUrl.value = await templatesStore.getTemplateImageUrl(template)
+    } else {
+      cachedImageUrl.value = newUrl
+    }
+  } else {
+    cachedImageUrl.value = newUrl
+  }
+}, { immediate: true })
+
 const loadInitialImage = async (imageUrl) => {
   if (!canvas || !imageUrl) {
     console.log('[v0] Cannot load initial image - canvas:', !!canvas, 'imageUrl:', imageUrl);
     return;
   }
 
-  console.log('[v0] Loading initial image:', imageUrl);
+  const urlToLoad = cachedImageUrl.value || imageUrl
+
+  console.log('[v0] Loading initial image:', urlToLoad);
 
   try {
-    fabric.Image.fromURL(imageUrl, (img) => {
+    fabric.Image.fromURL(urlToLoad, (img) => {
       if (!img) {
         console.error('[v0] Failed to load image from URL');
         return;
@@ -1118,11 +1141,12 @@ const expandCanvas = () => {
 };
 
 const loadTemplateImage = async () => {
-  console.log('[v0] loadTemplateImage called, initialImageUrl:', props.initialImageUrl);
-  if (props.initialImageUrl) {
-    await loadInitialImage(props.initialImageUrl);
+  console.log('[v0] loadTemplateImage called, initialImageUrl:', props.initialImageUrl)
+  const imageUrl = cachedImageUrl.value || props.initialImageUrl
+  if (imageUrl) {
+    await loadInitialImage(imageUrl)
   } else {
-    console.log('[v0] No initialImageUrl provided');
+    console.log('[v0] No initialImageUrl provided')
   }
 };
 

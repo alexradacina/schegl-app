@@ -60,6 +60,24 @@ export const useMachinesStore = defineStore("machines", () => {
     }
   }
 
+  const addMachine = async (machine: any) => {
+    if (!machine) return
+
+    if (!Array.isArray(machines.value)) {
+      machines.value = []
+    }
+
+    const existingIndex = machines.value.findIndex(m => m.id === machine.id)
+    if (existingIndex >= 0) {
+      machines.value[existingIndex] = machine
+    } else {
+      machines.value.push(machine)
+    }
+
+    await saveOfflineData("machines", machines.value)
+    console.log("[v0] Machine added to store:", machine)
+  }
+
   const createMachine = async (machineData: any) => {
     try {
       console.log("Creating machine with data:", machineData)
@@ -142,6 +160,7 @@ export const useMachinesStore = defineStore("machines", () => {
     isLoading,
     error,
     fetchMachines,
+    addMachine,
     createMachine,
     getMachineSyncStatus,
     removeSyncedOfflineMachines,

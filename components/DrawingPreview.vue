@@ -31,7 +31,7 @@
       v-show="showDrawingModal"
       :is-open="showDrawingModal"
       :drawing-id="drawingId"
-      :initial-image-url="initialImageUrl || ''"
+      :initial-image-url="cachedInitialImageUrl || ''"
       :order-id="orderId"
       :machine-order-id="machineOrderId"
       :result-type="resultType"
@@ -47,6 +47,7 @@ import DrawingModal from '@/components/DrawingModal.vue'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
 import { Capacitor } from '@capacitor/core'
 import { fabric } from 'fabric'
+import { useTemplatesStore } from '@/stores/templates'
 
 interface Props {
   drawingId: string
@@ -62,6 +63,8 @@ const props = defineProps<Props>()
 const drawingPreviewUrl = ref('')
 const previewCanvas = ref<HTMLCanvasElement | null>(null)
 const showDrawingModal = ref(false)
+const templatesStore = useTemplatesStore()
+const cachedInitialImageUrl = ref('')
 
 const buttonLabel = computed(() => {
   const hasPreview = !!drawingPreviewUrl.value
@@ -222,6 +225,21 @@ const loadDrawingPreview = async () => {
 
 watch(() => props.drawingId, async () => {
   await loadDrawingPreview()
+}, { immediate: true })
+
+watch(() => props.initialImageUrl, async (newUrl) => {
+  if (newUrl && newUrl.startsWith('http')) {
+    const template = templatesStore.templates.find(t =>
+        t.image_src === newUrl || t.original_image === newUrl
+    )
+    if (template) {
+      cachedInitialImageUrl.value = await templatesStore.getTemplateImageUrl(template)
+    } else {
+      cachedInitialImageUrl.value = newUrl
+    }
+  } else {
+    cachedInitialImageUrl.value = newUrl
+  }
 }, { immediate: true })
 </script>
 

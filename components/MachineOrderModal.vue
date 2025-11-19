@@ -2,7 +2,7 @@
   <ion-modal
       :is-open="isOpen"
       @did-dismiss="handleModalDismiss"
-      :initial-breakpoint="existingOrder ? 1 : 0.6"
+      :initial-breakpoint="1"
       :breakpoints="[0, 0.6, 0.9, 1]"
   >
     <ion-header>
@@ -18,31 +18,31 @@
 
     <ion-content class="ion-padding">
       <!-- Loading -->
-      <div v-show="isLoading" class="loading-container">
+      <div v-if="isLoading" class="loading-container">
         <ion-spinner name="crescent"></ion-spinner>
-        <p>{{ existingOrder ? 'Loading machine order...' : 'Checking existing orders...' }}</p>
+        <p>{{ existingOrder ? 'Loading machine order...' : 'Creating machine order...' }}</p>
       </div>
 
       <!-- Existing Order -->
-      <div v-if="existingOrder">
+      <div v-else-if="existingOrder && currentMachine">
         <!-- Machine Order Details -->
         <ion-card>
           <ion-card-header>
-            <ion-card-title>{{ machine?.internal_number }}</ion-card-title>
-            <ion-card-subtitle>{{ machine?.object }}</ion-card-subtitle>
+            <ion-card-title>{{ currentMachine?.internal_number }}</ion-card-title>
+            <ion-card-subtitle>{{ currentMachine?.object }}</ion-card-subtitle>
           </ion-card-header>
           <ion-card-content>
             <div class="detail-row">
               <ion-label>Status:</ion-label>
-              <ion-chip :color="getMachineStatusColor(machine.status)">
-                {{ getMachineStatusLabel(machine.status) }}
+              <ion-chip :color="getMachineStatusColor(currentMachine.status)">
+                {{ getMachineStatusLabel(currentMachine.status) }}
               </ion-chip>
             </div>
-            <div class="detail-row" v-show="existingOrder?.template">
+            <div class="detail-row" v-if="existingOrder?.template">
               <ion-label>Template:</ion-label>
               <span>{{ existingOrder?.template?.name }}</span>
             </div>
-            <div class="detail-row" v-show="existingOrder?.date">
+            <div class="detail-row" v-if="existingOrder?.date">
               <ion-label>Date:</ion-label>
               <span>{{ existingOrder?.date || '' }}</span>
             </div>
@@ -67,10 +67,10 @@
         <!-- Last Inspection Issues Section -->
         <ion-card v-if="showLastInspectionIssues">
           <ion-card-header>
-            <ion-card-title>Last Inspection Issues - {{ props.machine?.lastOrder?.created_at }}</ion-card-title>
+            <ion-card-title>Last Inspection Issues - {{ currentMachine?.lastOrder?.created_at }}</ion-card-title>
           </ion-card-header>
           <ion-card-content>
-            <div v-if="!props.machine?.lastOrder?.issues || lastInspectionIssues.length === 0" class="no-issues">
+            <div v-if="!currentMachine?.lastOrder?.issues || lastInspectionIssues.length === 0" class="no-issues">
               No issues from last inspection
             </div>
             <div v-else class="issues-list">
@@ -189,53 +189,6 @@
           </ion-card-content>
         </ion-card>
       </div>
-
-      <!-- New Order -->
-      <div v-else-if="!existingOrder">
-        <ion-card>
-          <ion-card-header>
-            <ion-card-title>Create Machine Order</ion-card-title>
-            <ion-card-subtitle>{{ machine?.internal_number }}</ion-card-subtitle>
-          </ion-card-header>
-          <ion-card-content>
-            <div v-show="suggestedTemplate" class="suggested-template">
-              <ion-item>
-                <ion-icon :icon="bulbOutline" slot="start" color="warning"></ion-icon>
-                <ion-label>
-                  <h3>Suggested Template</h3>
-                  <p>{{ suggestedTemplate?.name }}</p>
-                  <p><small>Based on previous orders for this machine</small></p>
-                </ion-label>
-              </ion-item>
-            </div>
-
-            <ion-item>
-              <ion-select
-                  v-model="selectedTemplateId"
-                  placeholder="Choose template"
-                  interface="popover"
-              >
-                <ion-select-option value="">No Template</ion-select-option>
-                <ion-select-option v-for="template in availableTemplates" :key="template.id" :value="template.id">
-                  {{ template.name }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
-
-            <ion-item>
-              <ion-select v-model="selectedStatus" placeholder="Select status" interface="popover">
-                <ion-select-option value="0">To Do</ion-select-option>
-                <ion-select-option value="1">No Issues</ion-select-option>
-                <ion-select-option value="2">Remark</ion-select-option>
-                <ion-select-option value="3">Severe Issue</ion-select-option>
-                <ion-select-option value="4">Retired</ion-select-option>
-              </ion-select>
-            </ion-item>
-
-            <ion-button @click="createMachineOrder" expand="block">Create Machine Order</ion-button>
-          </ion-card-content>
-        </ion-card>
-      </div>
     </ion-content>
   </ion-modal>
 </template>
@@ -268,8 +221,9 @@ import {
   toastController,
 } from '@ionic/vue'
 import { closeOutline, bulbOutline } from 'ionicons/icons'
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useMachineOrdersStore } from '@/stores/machineOrders'
+import { useMachinesStore } from '@/stores/machines'
 import { useTemplatesStore } from '@/stores/templates'
 import DrawingPreview from '@/components/DrawingPreview.vue'
 
@@ -284,8 +238,10 @@ const props = defineProps<Props>()
 const emit = defineEmits(['close', 'created', 'updated'])
 
 const machineOrdersStore = useMachineOrdersStore()
+const machinesStore = useMachinesStore()
 const templatesStore = useTemplatesStore()
 
+const currentMachine = ref<any>(null)
 const isLoading = ref(false)
 const existingOrder = ref(null)
 const suggestedTemplate = ref(null)
@@ -296,9 +252,10 @@ const remarks = ref('')
 const formResponses = ref({})
 const isFinished = ref(false)
 const lastInspectionIssues = ref<any[]>([])
+const loadedTemplateImageUrl = ref('')
 
 const showLastInspectionIssues = computed(() => {
-  return props.machine?.lastOrder && props.machine.lastOrder.order_id !== props.orderId
+  return currentMachine.value?.lastOrder && currentMachine.value.lastOrder.order_id !== props.orderId
 })
 
 const availableTemplates = computed(() => {
@@ -306,21 +263,22 @@ const availableTemplates = computed(() => {
 })
 
 const notesDrawingId = computed(() => {
-  if (!props.orderAddressId || !props.machine?.id) return ''
-  return `${props.orderAddressId}_${props.machine.id}`
+  if (!props.orderAddressId || !currentMachine.value?.id) return ''
+  return `${props.orderAddressId}_${currentMachine.value.id}`
 })
 
 const templateDrawingId = computed(() => {
-  if (!props.orderAddressId || !props.machine?.id || !existingOrder.value?.template?.id) return ''
-  return `${props.orderAddressId}_${props.machine.id}_template_${existingOrder.value.template.id}`
+  if (!props.orderAddressId || !currentMachine.value?.id || !existingOrder.value?.template?.id) return ''
+  return `${props.orderAddressId}_${currentMachine.value.id}_template_${existingOrder.value.template.id}`
 })
 
 const selectedTemplateImageUrl = computed(() => {
-  console.log('[v0] Computing selectedTemplateImageUrl')
-  console.log('[v0] existingOrder.value?.template:', existingOrder.value?.template)
+  // Return the loaded URL if available
+  if (loadedTemplateImageUrl.value) {
+    return loadedTemplateImageUrl.value
+  }
 
   if (existingOrder.value?.template?.image_src) {
-    console.log('[v0] Found image_src in existingOrder.template:', existingOrder.value.template.image_src)
     return existingOrder.value.template.image_src
   }
 
@@ -328,55 +286,47 @@ const selectedTemplateImageUrl = computed(() => {
     const templateId = existingOrder.value.template.id
     const fullTemplate = availableTemplates.value.find(t => t.id === templateId)
     if (fullTemplate?.image_src) {
-      console.log('[v0] Found image_src in templates store:', fullTemplate.image_src)
       return fullTemplate.image_src
     }
   }
 
-  console.log('[v0] No image_src found, returning empty string')
   return ''
 })
 
 const createMachineOrder = async () => {
-  if (!props.machine || !props.orderAddressId) return
+  if (!props.orderAddressId) return
   isLoading.value = true
   try {
-    const result = await machineOrdersStore.createMachineOrder({
-      machine_id: props.machine.id,
+    const machineOrderData: any = {
       order_address_id: props.orderAddressId,
       template_id: selectedTemplateId.value || null,
       status: parseInt(selectedStatus.value),
-    })
+    }
+
+    if (currentMachine.value) {
+      machineOrderData.machine_id = currentMachine.value.id
+    }
+
+    const result = await machineOrdersStore.createMachineOrder(machineOrderData)
     const toast = await toastController.create({
       message: result.success ? 'Machine order created' : result.message || 'Failed',
       duration: 2000,
       color: result.success ? 'success':'danger',
     })
     await toast.present()
-    if (result.success) emit('created')
-  } catch (e) { console.error(e) }
-  finally { isLoading.value = false }
-}
-
-const updateStatus = async () => {
-  if (!existingOrder.value) return
-  try {
-    const result = await machineOrdersStore.updateMachineOrderStatus(existingOrder.value.id, {
-      status: parseInt(selectedStatus.value),
-      issues: issues.value,
-      remarks: remarks.value,
-    })
-    const toast = await toastController.create({
-      message: result.success ? 'Machine order updated' : result.message || 'Failed',
-      duration: 2000,
-      color: result.success ? 'success':'danger',
-    })
-    await toast.present()
     if (result.success) {
-      existingOrder.value = { ...existingOrder.value, ...result.data.machine_order }
-      emit('updated')
+      if (result.data?.machine) {
+        machinesStore.addMachine(result.data.machine)
+        currentMachine.value = result.data.machine
+      }
+      if (result.data?.machine_order) {
+        existingOrder.value = result.data.machine_order
+        selectedStatus.value = result.data.machine_order?.status?.toString() || '0'
+        isFinished.value = result.data.machine_order?.finished || false
+      }
     }
   } catch (e) { console.error(e) }
+  finally { isLoading.value = false }
 }
 
 const assignTemplate = async () => {
@@ -417,11 +367,11 @@ const updateFinished = async () => {
 }
 
 const checkExistingOrder = async () => {
-  if (!props.machine || !props.orderAddressId) return
+  if (!currentMachine.value || !props.orderAddressId) return
   isLoading.value = true
   try {
     const existing = machineOrdersStore.machineOrders.find(
-        o => o.machine?.id === props.machine.id && o.order_address_id === props.orderAddressId
+        o => o.machine?.id === currentMachine.value.id && o.order_address_id === props.orderAddressId
     )
     if (existing) {
       existingOrder.value = existing
@@ -437,7 +387,7 @@ const checkExistingOrder = async () => {
       }
     } else {
       const lastTemplateOrder = machineOrdersStore.machineOrders
-          .filter(o => o.machine?.id === props.machine.id && o.template)
+          .filter(o => o.machine?.id === currentMachine.value.id && o.template)
           .pop()
       if (lastTemplateOrder) {
         const latestTemplate = availableTemplates.value.find(t =>
@@ -461,36 +411,56 @@ const handleModalDismiss = async () => {
   emit('close')
 }
 
+watch(() => existingOrder.value?.template?.id, async (templateId) => {
+  if (templateId) {
+    const template = availableTemplates.value.find(t => t.id === templateId)
+    if (template) {
+      loadedTemplateImageUrl.value = await templatesStore.getTemplateImageUrl(template)
+    }
+  } else {
+    loadedTemplateImageUrl.value = ''
+  }
+}, { immediate: true })
+
 watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
-    console.log('[v0] Modal opened, props.machine:', props.machine)
-    console.log('[v0] props.machine.lastOrder:', props.machine?.lastOrder)
-    console.log('[v0] props.machine.lastOrder.issues:', props.machine?.lastOrder?.issues)
-    console.log('[v0] showLastInspectionIssues:', showLastInspectionIssues.value)
+    currentMachine.value = props.machine
 
     const tabBar = document.querySelector('ion-tab-bar')
     if (tabBar) {
       tabBar.style.display = 'none'
     }
-    await checkExistingOrder()
 
-    if (showLastInspectionIssues.value && props.machine?.lastOrder?.issues) {
+    const existing = machineOrdersStore.machineOrders.find(
+        o => o.machine?.id === currentMachine.value?.id && o.order_address_id === props.orderAddressId
+    )
+
+    if (!existing && !currentMachine.value) {
+      await createMachineOrder()
+    } else if (existing || currentMachine.value) {
+      await checkExistingOrder()
+    }
+
+    if (showLastInspectionIssues.value && currentMachine.value?.lastOrder?.issues) {
       try {
-        // Parse the issues JSON string if it's a string, otherwise use as-is if it's already an array
-        if (typeof props.machine.lastOrder.issues === 'string') {
-          lastInspectionIssues.value = JSON.parse(props.machine.lastOrder.issues)
+        if (typeof currentMachine.value.lastOrder.issues === 'string') {
+          lastInspectionIssues.value = JSON.parse(currentMachine.value.lastOrder.issues)
         } else {
-          lastInspectionIssues.value = props.machine.lastOrder.issues
+          lastInspectionIssues.value = currentMachine.value.lastOrder.issues
         }
-        console.log('[v0] Initialized lastInspectionIssues:', lastInspectionIssues.value)
-        console.log('[v0] Initialized lastInspectionIssues length:', lastInspectionIssues.value.length)
       } catch (e) {
         console.error('[v0] Failed to parse issues:', e)
         lastInspectionIssues.value = []
       }
     } else {
-      console.log('[v0] Not initializing lastInspectionIssues - showLastInspectionIssues:', showLastInspectionIssues.value, 'issues:', props.machine?.lastOrder?.issues)
       lastInspectionIssues.value = []
+    }
+
+    if (existingOrder.value?.template?.id) {
+      const template = availableTemplates.value.find(t => t.id === existingOrder.value.template.id)
+      if (template) {
+        loadedTemplateImageUrl.value = await templatesStore.getTemplateImageUrl(template)
+      }
     }
   }
   else {
@@ -502,6 +472,8 @@ watch(() => props.isOpen, async (isOpen) => {
     if (tabBar) {
       tabBar.style.display = 'flex'
     }
+
+    currentMachine.value = null
     existingOrder.value = null
     suggestedTemplate.value = null
     selectedTemplateId.value = ''
@@ -511,11 +483,13 @@ watch(() => props.isOpen, async (isOpen) => {
     formResponses.value = {}
     isFinished.value = false
     lastInspectionIssues.value = []
+    isLoading.value = false
+    loadedTemplateImageUrl.value = ''
   }
 }, { immediate: true })
 
 onMounted(async () => {
-  await templatesStore.fetchTemplates()
+  // await templatesStore.fetchTemplates()
 })
 
 const getMachineStatusColor = (status: string) => {
@@ -564,17 +538,17 @@ const toggleIssueResolved = (index: number) => {
 }
 
 const saveLastInspectionIssues = async () => {
-  if (!showLastInspectionIssues.value || !props.machine?.lastOrder?.id) return
+  if (!showLastInspectionIssues.value || !currentMachine.value?.lastOrder?.id) return
 
   try {
     const issuesJson = JSON.stringify(lastInspectionIssues.value)
 
-    await machineOrdersStore.updateMachineOrderStatus(props.machine.lastOrder.id, {
+    await machineOrdersStore.updateMachineOrderStatus(currentMachine.value.lastOrder.id, {
       issues: issuesJson
     })
 
-    if (props.machine?.lastOrder) {
-      props.machine.lastOrder.issues = lastInspectionIssues.value
+    if (currentMachine.value?.lastOrder) {
+      currentMachine.value.lastOrder.issues = lastInspectionIssues.value
     }
   } catch (e) {
     console.error('[v0] Failed to save last inspection issues:', e)

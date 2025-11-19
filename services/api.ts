@@ -110,7 +110,7 @@ export const trackingTimesAPI = {
     update: (id: number, data: any) => api.put(`/tracking-times/${id}`, data),
     delete: (id: number) => api.delete(`/tracking-times/${id}`),
     getStatistics: (params?: any) => api.get("/tracking-times/statistics", { params }),
+    storeMultiple: (data: { items: any[] }) => api.post("/tracking-times/multiple", data),
 }
-
 
 export default api

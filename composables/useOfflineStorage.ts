@@ -4,7 +4,7 @@ import { Capacitor } from "@capacitor/core"
 
 export interface OfflineItem {
   id: string
-  type: "machine" | "assignment" | "machineOrder" | "drawing"
+  type: "machine" | "assignment" | "machineOrder" | "drawing" | "trackingTime"
   data: any
   timestamp: number
   synced: boolean
@@ -14,10 +14,70 @@ export interface OfflineItem {
 export function useOfflineStorage() {
   const OFFLINE_QUEUE_KEY = "offline_sync_queue"
   const OFFLINE_DATA_PREFIX = "offline_data_"
+  const OFFLINE_TRACKING_TIMES_KEY = "offline_tracking_times"
 
   const isNative = Capacitor.isNativePlatform()
 
-  // Save item to offline queue
+  const getOfflineTrackingTimes = async () => {
+    try {
+      const { value } = await Preferences.get({ key: OFFLINE_TRACKING_TIMES_KEY })
+      return value ? JSON.parse(value) : []
+    } catch (error) {
+      console.error("[v0] Error getting offline tracking times:", error)
+      return []
+    }
+  }
+
+  const saveOfflineTrackingTimes = async (trackingTimes: any[]) => {
+    try {
+      await Preferences.set({
+        key: OFFLINE_TRACKING_TIMES_KEY,
+        value: JSON.stringify(trackingTimes),
+      })
+      return true
+    } catch (error) {
+      console.error("[v0] Error saving offline tracking times:", error)
+      return false
+    }
+  }
+
+  const addOfflineTrackingTime = async (trackingTime: any) => {
+    try {
+      const trackingTimes = await getOfflineTrackingTimes()
+      trackingTimes.push(trackingTime)
+      await saveOfflineTrackingTimes(trackingTimes)
+      return true
+    } catch (error) {
+      console.error("[v0] Error adding offline tracking time:", error)
+      return false
+    }
+  }
+
+  const updateOfflineTrackingTime = async (id: string, updates: any) => {
+    try {
+      const trackingTimes = await getOfflineTrackingTimes()
+      const index = trackingTimes.findIndex((t: any) => t.id === id)
+      if (index !== -1) {
+        trackingTimes[index] = { ...trackingTimes[index], ...updates }
+        await saveOfflineTrackingTimes(trackingTimes)
+      }
+      return true
+    } catch (error) {
+      console.error("[v0] Error updating offline tracking time:", error)
+      return false
+    }
+  }
+
+  const clearOfflineTrackingTimes = async () => {
+    try {
+      await Preferences.remove({ key: OFFLINE_TRACKING_TIMES_KEY })
+      return true
+    } catch (error) {
+      console.error("[v0] Error clearing offline tracking times:", error)
+      return false
+    }
+  }
+
   const addToOfflineQueue = async (item: OfflineItem) => {
     try {
       const { value } = await Preferences.get({ key: OFFLINE_QUEUE_KEY })
@@ -38,7 +98,6 @@ export function useOfflineStorage() {
     }
   }
 
-  // Get all items from offline queue
   const getOfflineQueue = async (): Promise<OfflineItem[]> => {
     try {
       const { value } = await Preferences.get({ key: OFFLINE_QUEUE_KEY })
@@ -49,7 +108,6 @@ export function useOfflineStorage() {
     }
   }
 
-  // Remove item from offline queue
   const removeFromOfflineQueue = async (itemId: string) => {
     try {
       const queue = await getOfflineQueue()
@@ -68,7 +126,6 @@ export function useOfflineStorage() {
     }
   }
 
-  // Mark item as synced
   const markAsSynced = async (itemId: string) => {
     try {
       const queue = await getOfflineQueue()
@@ -86,7 +143,6 @@ export function useOfflineStorage() {
     }
   }
 
-  // Clear synced items from queue
   const clearSyncedItems = async () => {
     try {
       const queue = await getOfflineQueue()
@@ -104,7 +160,6 @@ export function useOfflineStorage() {
     }
   }
 
-  // Save data for offline use
   const saveOfflineData = async (key: string, data: any) => {
     try {
       await Preferences.set({
@@ -118,7 +173,6 @@ export function useOfflineStorage() {
     }
   }
 
-  // Get offline data
   const getOfflineData = async (key: string) => {
     try {
       const { value } = await Preferences.get({ key: `${OFFLINE_DATA_PREFIX}${key}` })
@@ -139,13 +193,11 @@ export function useOfflineStorage() {
     }
   }
 
-  // Save large files (like route plans) to filesystem
   const saveOfflineFile = async (fileName: string, data: any) => {
     try {
       const jsonData = JSON.stringify(data)
 
       if (isNative) {
-        // Native: Use Capacitor Filesystem
         await Filesystem.writeFile({
           path: `offline/${fileName}.json`,
           data: jsonData,
@@ -154,7 +206,6 @@ export function useOfflineStorage() {
           recursive: true,
         })
       } else {
-        // Web: Use localStorage as fallback
         localStorage.setItem(`offline_file_${fileName}`, jsonData)
       }
 
@@ -166,11 +217,9 @@ export function useOfflineStorage() {
     }
   }
 
-  // Get offline file
   const getOfflineFile = async (fileName: string) => {
     try {
       if (isNative) {
-        // Native: Use Capacitor Filesystem
         const result = await Filesystem.readFile({
           path: `offline/${fileName}.json`,
           directory: Directory.Data,
@@ -178,7 +227,6 @@ export function useOfflineStorage() {
         })
         return JSON.parse(result.data as string)
       } else {
-        // Web: Use localStorage as fallback
         const data = localStorage.getItem(`offline_file_${fileName}`)
         return data ? JSON.parse(data) : null
       }
@@ -188,18 +236,15 @@ export function useOfflineStorage() {
     }
   }
 
-  // Check if file exists
   const offlineFileExists = async (fileName: string): Promise<boolean> => {
     try {
       if (isNative) {
-        // Native: Check filesystem
         await Filesystem.stat({
           path: `offline/${fileName}.json`,
           directory: Directory.Data,
         })
         return true
       } else {
-        // Web: Check localStorage
         return localStorage.getItem(`offline_file_${fileName}`) !== null
       }
     } catch (error) {
@@ -219,5 +264,10 @@ export function useOfflineStorage() {
     saveOfflineFile,
     getOfflineFile,
     offlineFileExists,
+    getOfflineTrackingTimes,
+    saveOfflineTrackingTimes,
+    addOfflineTrackingTime,
+    updateOfflineTrackingTime,
+    clearOfflineTrackingTimes,
   }
 }

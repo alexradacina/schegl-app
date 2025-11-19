@@ -141,7 +141,7 @@
               <span class="separator">•</span>
               <span class="tracking-type" :class="`type-${tracking.type}`">{{ tracking.type }}</span>
             </div>
-            <ion-button
+            <ion-button v-if="isOnline"
                 fill="clear"
                 size="small"
                 color="danger"
@@ -157,13 +157,6 @@
               {{ tracking.address.street }}, {{ tracking.address.postal_code }} {{ tracking.address.city }}
             </div>
             <div v-if="tracking.description" class="item-description">{{ tracking.description }}</div>
-          </div>
-
-          <div class="item-row-3">
-            <div class="item-duration">{{ tracking.formatted_duration || calculateDuration(tracking) }}</div>
-            <div v-if="!tracking.synced" class="unsynced-badge">
-              <ion-icon :icon="syncOutline" />
-            </div>
           </div>
         </div>
       </div>
@@ -202,6 +195,7 @@ import { useTrackingTimesStore } from '@/stores/trackingTimes'
 import { useAssignmentsStore } from '@/stores/assignments'
 import { useTimeTracking } from '@/composables/useTimeTracking'
 import { useOfflineStorage } from '@/composables/useOfflineStorage'
+import { useNetworkStatus } from '@/composables/useNetworkStatus'
 
 const props = defineProps<{
   isOpen: boolean
@@ -213,8 +207,9 @@ const emit = defineEmits<{
 
 const trackingStore = useTrackingTimesStore()
 const assignmentsStore = useAssignmentsStore()
-const { startTracking, stopTracking, updateAndRestart } = useTimeTracking()
-const { getOfflineQueue } = useOfflineStorage()
+const { startTracking, stopTracking, updateAndRestart, syncOfflineTrackingTimes } = useTimeTracking()
+const { getOfflineTrackingTimes } = useOfflineStorage()
+const { isOnline, onOnline } = useNetworkStatus()
 
 const types = [
   { value: 'driving', label: 'Drive' },
@@ -340,6 +335,7 @@ const handleStop = async () => {
   if (currentTracking.value?.id) {
     await stopTracking(currentTracking.value.id)
     stopDurationTimer()
+    await trackingStore.fetchTrackingTimes(today)
   }
 }
 
@@ -353,8 +349,9 @@ const handleUpdate = async () => {
   }
 }
 
-const handleDelete = async (id: number) => {
+const handleDelete = async (id: number | string) => {
   await trackingStore.deleteTrackingTime(id)
+  await checkUnsyncedItems()
 }
 
 const handleClose = () => {
@@ -362,13 +359,19 @@ const handleClose = () => {
 }
 
 const syncNow = async () => {
-  // Trigger sync via offline sync composable
-  // This will be handled by the global sync mechanism
+  if (!isOnline.value) {
+    return
+  }
+
+  const result = await syncOfflineTrackingTimes()
+  if (result.success) {
+    await checkUnsyncedItems()
+  }
 }
 
 const checkUnsyncedItems = async () => {
-  const queue = await getOfflineQueue()
-  unsyncedCount.value = queue.filter(item => !item.synced).length
+  const offlineTrackingTimes = await getOfflineTrackingTimes()
+  unsyncedCount.value = offlineTrackingTimes.filter((t: any) => !t.deleted).length
   hasUnsyncedItems.value = unsyncedCount.value > 0
 }
 
@@ -408,6 +411,12 @@ onMounted(async () => {
     await trackingStore.fetchTrackingTimes(today)
     await checkUnsyncedItems()
   }
+
+  // Register callback for when network comes online
+  onOnline(async () => {
+    console.log("[v0] Network online, syncing tracking times...")
+    await syncNow()
+  })
 })
 </script>
 
